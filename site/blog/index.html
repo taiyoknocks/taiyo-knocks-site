@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>メンバーブログ｜太陽ノックス 公式サイト</title>
+<meta name="description" content="奈良県発の草野球チーム「太陽ノックス」のメンバーブログ。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%231D4FB8'/%3E%3Cpath d='M12 8.5Q18.5 20 12 31.5M28 8.5Q21.5 20 28 31.5' fill='none' stroke='white' stroke-width='2' stroke-dasharray='2.5 2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+<div class="tk-page">
+<header class="tk-header"><div class="tk-header-in">
+<a class="tk-logo" href="/">
+<svg viewBox="0 0 40 40" width="28" height="28" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#1D4FB8"></circle><path d="M12 8.5 Q18.5 20 12 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path><path d="M28 8.5 Q21.5 20 28 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path></svg>
+<span class="tk-logo-text"><span class="tk-logo-main">太陽ノックス</span><span class="tk-logo-sub">OFFICIAL WEB SITE</span></span>
+</a>
+<a class="tk-header-link" href="/">TOP</a>
+</div></header>
+
+<main class="tk-main">
+<div class="tk-heading"><h1><span class="en">BLOG</span><span class="ja">メンバーブログ</span></h1><span class="rule" aria-hidden="true"></span></div>
+<div class="tk-chips" id="chips" role="group" aria-label="メンバーで絞り込む"></div>
+<div id="status" class="tk-loading" role="status">読み込んでいます…</div>
+<ul class="tk-list" id="list" hidden></ul>
+<a class="tk-btn ghost wide" href="/">トップページへ戻る</a>
+</main>
+
+<footer class="tk-footer">
+<p>※乃木坂46とは一切関係ありません。</p>
+<p>© 2026 太陽ノックス</p>
+</footer>
+</div>
+<script src="/blog/blog.js"></script>
+<script>
+(function () {
+  var listEl = document.getElementById('list');
+  var statusEl = document.getElementById('status');
+  var chipsEl = document.getElementById('chips');
+  var params = new URLSearchParams(location.search);
+  var current = params.has('member') ? Number(params.get('member')) : null;
+  var posts = [];
+
+  function chip(label, no, value) {
+    var b = TK.el('button', 'tk-chip');
+    b.type = 'button';
+    if (no != null) { b.appendChild(TK.el('span', 'no', String(no))); }
+    b.appendChild(document.createTextNode(label));
+    b.setAttribute('aria-pressed', String(current === value));
+    b.addEventListener('click', function () {
+      current = value;
+      var u = new URL(location.href);
+      if (value == null) u.searchParams.delete('member'); else u.searchParams.set('member', value);
+      history.replaceState(null, '', u);
+      Array.prototype.forEach.call(chipsEl.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      b.setAttribute('aria-pressed', 'true');
+      draw();
+    });
+    return b;
+  }
+
+  function draw() {
+    var shown = posts.filter(function (p) { return current == null || p.author.no === current; });
+    listEl.textContent = '';
+    if (!shown.length) {
+      listEl.hidden = true;
+      statusEl.hidden = false;
+      statusEl.className = 'tk-empty';
+      statusEl.textContent = current == null ? 'まだ記事はありません。最初の1本をお楽しみに。' : 'このメンバーの記事はまだありません。';
+      return;
+    }
+    statusEl.hidden = true;
+    listEl.hidden = false;
+    shown.forEach(function (p) { listEl.appendChild(TK.listRow(p)); });
+  }
+
+  Promise.all([TK.getMembers(), TK.api('posts')]).then(function (res) {
+    var members = res[0];
+    posts = res[1].posts || [];
+    chipsEl.appendChild(chip('すべて', null, null));
+    if (current == null) chipsEl.firstChild.setAttribute('aria-pressed', 'true');
+    members.forEach(function (m) { chipsEl.appendChild(chip(m.name, m.no, m.no)); });
+    draw();
+  }).catch(function () {
+    statusEl.className = 'tk-msg err';
+    statusEl.textContent = 'ブログを読み込めませんでした。時間をおいて開き直してください。';
+  });
+})();
+</script>
+</body>
+</html>

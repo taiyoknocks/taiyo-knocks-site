@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>ブログの管理｜太陽ノックス</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/blog/blog.css">
+<style>
+.ed-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--sub); margin-bottom: 6px; }
+.ed-field { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); font: inherit; font-size: 16px; border-radius: 0; }
+.mrow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.mrow .t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mrow .t a { font-size: 14px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.mrow .t span { font-size: 11px; color: var(--sub); }
+.del { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid var(--danger); background: #FFFFFF; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.del.armed { background: var(--danger); color: #FFFFFF; }
+</style>
+</head>
+<body>
+<div class="tk-page">
+<header class="tk-header"><div class="tk-header-in">
+<a class="tk-logo" href="/"><span class="tk-logo-text"><span class="tk-logo-main">太陽ノックス</span><span class="tk-logo-sub">ADMIN</span></span></a>
+<a class="tk-header-link" href="/blog/">BLOG</a>
+</div></header>
+<main class="tk-main">
+<div class="tk-heading"><h1><span class="en">ADMIN</span><span class="ja">ブログの管理</span></h1><span class="rule" aria-hidden="true"></span></div>
+
+<form id="login" style="display: flex; flex-direction: column; gap: 14px">
+<p class="hint" style="margin: 0; font-size: 12px; line-height: 1.8; color: var(--sub)">監督用のページです。管理用の合言葉を入れると、どの記事でも削除できます。</p>
+<div><label class="ed-label" for="ap">管理用の合言葉</label><input class="ed-field" id="ap" type="password" autocomplete="current-password" required></div>
+<div id="login-msg" role="alert"></div>
+<button class="tk-btn wide" type="submit">入る</button>
+</form>
+
+<section id="panel" hidden style="display: flex; flex-direction: column; gap: 16px">
+<div id="panel-msg" role="alert"></div>
+<div id="rows"></div>
+<button class="tk-btn ghost wide" type="button" id="export">全記事を書き出す（引っ越し・保存用）</button>
+</section>
+</main>
+</div>
+<script src="/blog/blog.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var admin = '';
+  try { admin = sessionStorage.getItem('tk-blog-admin') || ''; } catch (e) {}
+
+  function msg(id, text, err) { var b = $(id); b.textContent = ''; if (text) b.appendChild(TK.el('div', 'tk-msg' + (err ? ' err' : ''), text)); }
+
+  function load() {
+    $('login').hidden = true; $('panel').hidden = false;
+    var rows = $('rows'); rows.textContent = '';
+    rows.appendChild(TK.el('div', 'tk-loading', '読み込んでいます…'));
+    TK.api('posts').then(function (res) {
+      rows.textContent = '';
+      var posts = res.posts || [];
+      if (!posts.length) { rows.appendChild(TK.el('div', 'tk-empty', 'まだ記事はありません')); return; }
+      posts.forEach(function (p) {
+        var r = TK.el('div', 'mrow');
+        var t = TK.el('div', 't');
+        var a = TK.el('a', null, p.title); a.href = '/blog/post.html?id=' + encodeURIComponent(p.id);
+        t.appendChild(a); t.appendChild(TK.el('span', null, TK.fmtDate(p.date) + '　' + p.author.no + ' ' + p.author.name));
+        var d = TK.el('button', 'del', '削除'); d.type = 'button';
+        d.addEventListener('click', function () {
+          if (!d.classList.contains('armed')) { d.classList.add('armed'); d.textContent = '本当に消す'; return; }
+          d.disabled = true; d.textContent = '削除中…';
+          TK.api('delete', { id: p.id, adminPasscode: admin }).then(function () { r.remove(); msg('panel-msg', '「' + p.title + '」を削除しました'); })
+            .catch(function (e) { d.disabled = false; d.classList.remove('armed'); d.textContent = '削除'; msg('panel-msg', e.message, true); });
+        });
+        r.appendChild(t); r.appendChild(d); rows.appendChild(r);
+      });
+    }).catch(function (e) { rows.textContent = ''; msg('panel-msg', e.message, true); });
+  }
+
+  $('login').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('ap').value;
+    TK.api('admin-check', { adminPasscode: v }).then(function () {
+      admin = v; try { sessionStorage.setItem('tk-blog-admin', v); } catch (e2) {}
+      load();
+    }).catch(function (err) { msg('login-msg', err.message, true); });
+  });
+
+  $('export').addEventListener('click', function () {
+    TK.api('export', { adminPasscode: admin }).then(function (data) {
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'taiyo-knocks-blog-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+    }).catch(function (e) { msg('panel-msg', e.message, true); });
+  });
+
+  if (admin) load();
+})();
+</script>
+</body>
+</html>
