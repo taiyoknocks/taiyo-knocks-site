@@ -357,11 +357,10 @@ YouTube</a>
 <h2 style="margin: 0; display: flex; align-items: baseline; gap: 12px"><span style="font-family: 'Cinzel', 'Times New Roman', serif; font-weight: 500; font-size: 24px; letter-spacing: 0.16em; color: #1D4FB8">BLOG</span><span style="font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: #5B6478">メンバーブログ</span></h2>
 <span aria-hidden="true" style="height: 1px; background: #1D4FB8"></span>
 </div>
-<div style="border: 1px solid #D6DDEA; padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
-<p style="margin: 0; font-family: 'Cinzel', 'Times New Roman', serif; font-weight: 500; font-size: 13px; letter-spacing: 0.3em; color: #1D4FB8">COMING SOON</p>
-<p style="margin: 0; font-family: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; font-weight: 600; font-size: 17px; letter-spacing: 0.06em">メンバーブログは準備中です</p>
-<p style="margin: 0; font-size: 13px; line-height: 1.8; color: #5B6478">公開までもうしばらくお待ちください。</p>
-</div>
+<ul id="tk-blog-latest" style="list-style: none; margin: 0; padding: 0; border-top: 1px solid #D6DDEA">
+<li style="padding: 28px 8px; text-align: center; font-size: 13px; line-height: 1.8; color: #5B6478; border-bottom: 1px solid #D6DDEA">最新のブログがここに表示されます</li>
+</ul>
+<a href="/blog/" style="margin-top: 4px; align-self: center; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 300px; min-height: 48px; background: #1D4FB8; color: #FFFFFF; font-family: 'Cinzel', 'Times New Roman', serif; font-weight: 500; font-size: 13px; letter-spacing: 0.24em; text-decoration: none">VIEW MORE</a>
 </div>
 </section>
 
@@ -409,6 +408,7 @@ YouTube</a>
 <a href="https://www.instagram.com/taiyo_knocks/" style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #FFFFFF; text-decoration: none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="0.8"></circle></svg>Instagram</a>
 <a href="https://www.youtube.com/channel/UCoVtau7pK26m3WbjXcuxjUQ" style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #FFFFFF; text-decoration: none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="4"></rect><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor" stroke="none"></path></svg>YouTube</a>
 </div>
+<a href="/post/" style="display: inline-flex; align-items: center; min-height: 44px; font-size: 12px; color: #DCE5F7">メンバー用：ブログを書く</a>
 <p style="margin: 0; font-size: 11px; line-height: 1.8; color: #DCE5F7">※乃木坂46とは一切関係ありません。</p>
 <p style="margin: 0; font-size: 11px; letter-spacing: 0.1em; color: #DCE5F7">© 2026 太陽ノックス</p>
 </div>
@@ -438,6 +438,16 @@ Array.prototype.forEach.call(menu.querySelectorAll('a'),function(a){a.addEventLi
 Array.prototype.forEach.call(document.querySelectorAll('a[href="#ticket"]'),function(a){a.addEventListener('click',function(){document.getElementById('ticket').open=true;});});
 var nw=document.getElementById('tk-news-wrap'),nt=document.getElementById('tk-news-toggle');
 if(nw&&nt){nt.addEventListener('click',function(){var o=nw.hidden;nw.hidden=!o;nt.setAttribute('aria-expanded',o?'true':'false');nt.textContent=o?'CLOSE':'VIEW MORE';});}
+var bl=document.getElementById('tk-blog-latest');
+if(bl&&window.fetch){fetch('/api/blog/posts',{cache:'no-store'}).then(function(r){return r.ok?r.json():{posts:[]};}).then(function(d){
+var ps=(d.posts||[]).slice(0,3);bl.textContent='';
+function mk(t,st,tx){var e=document.createElement(t);if(st)e.setAttribute('style',st);if(tx!=null)e.textContent=tx;return e;}
+function fd(iso){var x=new Date(new Date(iso).getTime()+324e5),z=function(n){return(n<10?'0':'')+n;};return x.getUTCFullYear()+'.'+z(x.getUTCMonth()+1)+'.'+z(x.getUTCDate());}
+if(!ps.length){bl.appendChild(mk('li','padding: 28px 8px; text-align: center; font-size: 13px; line-height: 1.8; color: #5B6478; border-bottom: 1px solid #D6DDEA','まだ記事はありません。最初の1本をお楽しみに。'));return;}
+ps.forEach(function(p){var li=mk('li','border-bottom: 1px solid #D6DDEA');var a=mk('a','display: flex; align-items: center; gap: 14px; padding: 16px 2px; color: #1A2233; text-decoration: none');a.href='/blog/post.html?id='+encodeURIComponent(p.id);
+if(p.thumb){var im=mk('img','display: block; flex: 0 0 84px; width: 84px; height: 84px; object-fit: cover; background: #EEF3FB');im.src=p.thumb;im.alt='';im.loading='lazy';a.appendChild(im);}else{a.appendChild(mk('span','flex: 0 0 84px; width: 84px; height: 84px; background: #EEF3FB; display: flex; align-items: center; justify-content: center; font-family: Cinzel, serif; font-weight: 600; font-size: 28px; color: '+blue,String(p.author.no)));}
+var b=mk('span','display: flex; flex-direction: column; gap: 6px; min-width: 0');var m=mk('span','display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: #5B6478');m.appendChild(mk('span','font-family: Cinzel, serif; font-size: 12px; color: #1A2233',fd(p.date)));m.appendChild(mk('span','font-weight: 700; color: '+blue,p.author.no+' '+p.author.name));b.appendChild(m);b.appendChild(mk('span','font-size: 14px; font-weight: 700; line-height: 1.6; overflow-wrap: anywhere',p.title));a.appendChild(b);li.appendChild(a);bl.appendChild(li);});
+}).catch(function(){});}
 restart();
 })();
 </script>

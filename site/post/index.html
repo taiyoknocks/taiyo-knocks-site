@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>ブログを書く｜太陽ノックス メンバー用</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%231D4FB8'/%3E%3Cpath d='M12 8.5Q18.5 20 12 31.5M28 8.5Q21.5 20 28 31.5' fill='none' stroke='white' stroke-width='2' stroke-dasharray='2.5 2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/blog/blog.css">
+<style>
+.ed-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--sub); margin-bottom: 6px; }
+.ed-field { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); background: #FFFFFF; color: var(--ink); font: inherit; font-size: 16px; border-radius: 0; }
+select.ed-field { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--blue) 50%), linear-gradient(135deg, var(--blue) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+.ed-title { font-family: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; font-weight: 600; font-size: 18px; }
+.paper { border: 1px solid var(--line); background: #FFFFFF; padding: 14px 14px 6px; display: flex; flex-direction: column; gap: 10px; min-height: 260px; }
+.ed-text { width: 100%; border: 0; padding: 0; resize: none; overflow: hidden; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 2; letter-spacing: 0.03em; min-height: 40px; border-radius: 0; }
+.ed-text:focus-visible { outline: none; background: #F7F9FD; }
+.ed-fig { position: relative; margin: 0; }
+.ed-fig img { display: block; width: 100%; height: auto; }
+.ed-fig-del { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(26,34,51,0.75); color: #FFFFFF; font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.toolbar { position: sticky; bottom: 0; z-index: 10; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,0.96); border-top: 1px solid var(--line); margin: 0 -16px -48px; }
+.hint { margin: 0; font-size: 12px; line-height: 1.8; color: var(--sub); }
+.saved { font-size: 11px; color: var(--sub); min-height: 16px; }
+.overlay { position: fixed; inset: 0; z-index: 50; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.overlay-in { max-width: 480px; margin: 0 auto; background: #FFFFFF; min-height: 100%; display: flex; flex-direction: column; }
+.pv-bar { position: sticky; top: 0; z-index: 2; background: var(--sun); color: var(--ink); padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px; font-size: 13px; font-weight: 700; text-align: center; letter-spacing: 0.06em; }
+.pv-actions { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,0.97); border-top: 1px solid var(--line); }
+.mine { border: 1px solid var(--line); }
+.mine summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 14px; font-size: 14px; font-weight: 700; }
+.mine summary::-webkit-details-marker { display: none; }
+.mine ul { list-style: none; margin: 0; padding: 0 14px 6px; }
+.mine li { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.mine .t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mine .t a { font-size: 14px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.mine .t span { font-family: 'Cinzel', serif; font-size: 11px; color: var(--sub); }
+.mine .del { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid var(--danger); background: #FFFFFF; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.mine .del.armed { background: var(--danger); color: #FFFFFF; }
+.done { display: flex; flex-direction: column; gap: 14px; align-items: stretch; text-align: center; padding: 24px 0; }
+.done .big { font-family: 'Shippori Mincho', serif; font-weight: 600; font-size: 22px; }
+</style>
+</head>
+<body>
+<div class="tk-page">
+<header class="tk-header"><div class="tk-header-in">
+<a class="tk-logo" href="/">
+<svg viewBox="0 0 40 40" width="28" height="28" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#1D4FB8"></circle><path d="M12 8.5 Q18.5 20 12 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path><path d="M28 8.5 Q21.5 20 28 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path></svg>
+<span class="tk-logo-text"><span class="tk-logo-main">太陽ノックス</span><span class="tk-logo-sub">MEMBERS ONLY</span></span>
+</a>
+<a class="tk-header-link" href="/blog/">BLOG</a>
+</div></header>
+
+<main class="tk-main">
+<div class="tk-heading"><h1><span class="en">WRITE</span><span class="ja">ブログを書く</span></h1><span class="rule" aria-hidden="true"></span></div>
+
+<!-- 合言葉 -->
+<section id="gate" hidden>
+<form id="gate-form" style="display: flex; flex-direction: column; gap: 14px">
+<p class="hint">メンバー専用のページです。チームの合言葉を入れてください。このスマホでは、次から入力しなくて大丈夫です。</p>
+<div><label class="ed-label" for="pass">合言葉</label><input class="ed-field" id="pass" type="password" autocomplete="current-password" required></div>
+<div id="gate-msg" role="alert"></div>
+<button class="tk-btn wide" type="submit">はじめる</button>
+</form>
+</section>
+
+<!-- 書く -->
+<section id="editor" hidden style="display: flex; flex-direction: column; gap: 18px">
+<div><label class="ed-label" for="author">書いた人</label><select class="ed-field" id="author"><option value="">名前を選んでください</option></select></div>
+<div><label class="ed-label" for="title">タイトル</label><input class="ed-field ed-title" id="title" type="text" maxlength="60" placeholder="例：今日のごはん"></div>
+<div>
+<span class="ed-label" id="body-label">本文</span>
+<div class="paper" id="paper" role="group" aria-labelledby="body-label"></div>
+<p class="hint" style="margin-top: 8px">写真は、入れたい場所に文字のカーソルを置いてから「写真を入れる」を押すと、その位置に入ります。</p>
+<div class="saved" id="saved" aria-live="polite"></div>
+</div>
+<div id="ed-msg" role="alert"></div>
+<details class="mine" id="mine"><summary><span>このスマホから書いた記事</span><span id="mine-count" class="tk-serif" style="color: var(--blue)">0</span></summary><ul id="mine-list"></ul></details>
+<div class="toolbar">
+<button class="tk-btn ghost" type="button" id="add-photo">
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><circle cx="12" cy="12.5" r="3.5"></circle><path d="M8 6l1.5-2h5L16 6"></path></svg>写真を入れる</button>
+<button class="tk-btn" type="button" id="to-preview">確認する</button>
+<input type="file" id="file" accept="image/*" multiple hidden>
+</div>
+</section>
+
+<!-- 完了 -->
+<section id="done" hidden>
+<div class="done">
+<p class="big">投稿しました！</p>
+<p class="hint">ブログに載りました。このスマホから書いた記事は、「ブログを書く」画面の下からいつでも削除できます。</p>
+<a class="tk-btn wide" id="done-link" href="/blog/">記事を見る</a>
+<button class="tk-btn ghost wide" type="button" id="again">もう1本書く</button>
+</div>
+</section>
+</main>
+</div>
+
+<!-- プレビュー -->
+<div class="overlay" id="preview" hidden role="dialog" aria-modal="true" aria-labelledby="pv-bar">
+<div class="overlay-in">
+<div class="pv-bar" id="pv-bar">プレビュー（まだ公開されていません）</div>
+<div class="tk-main" id="pv-article"></div>
+<div class="pv-actions">
+<div id="pv-msg" role="alert"></div>
+<button class="tk-btn wide" type="button" id="publish">この内容で投稿する</button>
+<button class="tk-btn ghost wide" type="button" id="back">戻って直す</button>
+</div>
+</div>
+</div>
+
+<script src="/blog/blog.js"></script>
+<script>
+(function () {
+  var PASS_KEY = 'tk-blog-pass', DRAFT_KEY = 'tk-blog-draft', MINE_KEY = 'tk-blog-mine', AUTHOR_KEY = 'tk-blog-author';
+  var $ = function (id) { return document.getElementById(id); };
+  var members = [];
+  var blocks = [{ type: 'text', text: '' }];
+  var focus = { index: 0, pos: 0 };
+  var busy = false;
+
+  function show(id) {
+    ['gate', 'editor', 'done'].forEach(function (s) { $(s).hidden = s !== id; });
+    window.scrollTo(0, 0);
+  }
+  function msg(boxId, text, isErr) {
+    var b = $(boxId);
+    b.textContent = '';
+    if (text) b.appendChild(TK.el('div', 'tk-msg' + (isErr ? ' err' : ''), text));
+  }
+
+  // ---------- 写真を軽くする ----------
+  function loadBitmap(file) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function () { return loadViaImg(file); });
+    }
+    return loadViaImg(file);
+  }
+  function loadViaImg(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('この写真は読み込めませんでした')); };
+      img.src = url;
+    });
+  }
+  function compress(file) {
+    return loadBitmap(file).then(function (src) {
+      var w = src.width, h = src.height, max = 1280;
+      var s = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas');
+      c.width = Math.round(w * s); c.height = Math.round(h * s);
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(src, 0, 0, c.width, c.height);
+      var q = 0.82, data = c.toDataURL('image/jpeg', q);
+      while (data.length > 2600000 && q > 0.4) { q -= 0.1; data = c.toDataURL('image/jpeg', q); }
+      return data;
+    });
+  }
+
+  // ---------- 本文エディタ ----------
+  function autosize(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+  function renderPaper(focusIndex, focusPos) {
+    var paper = $('paper');
+    paper.textContent = '';
+    var firstText = true;
+    blocks.forEach(function (b, i) {
+      if (b.type === 'text') {
+        var t = document.createElement('textarea');
+        t.className = 'ed-text';
+        t.rows = 1;
+        t.value = b.text;
+        t.setAttribute('aria-label', '本文');
+        if (firstText && blocks.length === 1) t.placeholder = '今日こんなの食べてきました！\n\nここに自由に書いてください。';
+        firstText = false;
+        var remember = function () { focus = { index: i, pos: t.selectionStart }; };
+        t.addEventListener('input', function () { b.text = t.value; autosize(t); remember(); saveDraftSoon(); });
+        ['focus', 'click', 'keyup', 'select'].forEach(function (ev) { t.addEventListener(ev, remember); });
+        paper.appendChild(t);
+        requestAnimationFrame(function () { autosize(t); });
+        if (focusIndex === i) {
+          requestAnimationFrame(function () { t.focus(); var p = focusPos == null ? t.value.length : focusPos; t.setSelectionRange(p, p); focus = { index: i, pos: p }; });
+        }
+      } else {
+        var fig = document.createElement('figure');
+        fig.className = 'ed-fig';
+        var img = document.createElement('img');
+        img.src = b.data; img.alt = '入れた写真';
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'ed-fig-del'; del.setAttribute('aria-label', 'この写真を外す'); del.textContent = '×';
+        del.addEventListener('click', function () { removeImage(i); });
+        fig.appendChild(img); fig.appendChild(del);
+        paper.appendChild(fig);
+      }
+    });
+  }
+  function removeImage(i) {
+    blocks.splice(i, 1);
+    var prev = blocks[i - 1], next = blocks[i];
+    var fi = Math.max(0, i - 1), fp = null;
+    if (prev && next && prev.type === 'text' && next.type === 'text') {
+      fp = prev.text.length;
+      prev.text = prev.text && next.text ? prev.text + '\n' + next.text : prev.text + next.text;
+      blocks.splice(i, 1);
+    }
+    if (!blocks.length || blocks[blocks.length - 1].type !== 'text') blocks.push({ type: 'text', text: '' });
+    renderPaper(prev && prev.type === 'text' ? fi : null, fp);
+    saveDraftSoon();
+  }
+  function insertImages(datas) {
+    var i = focus.index, b = blocks[i];
+    var imgs = datas.map(function (d) { return { type: 'image', data: d }; });
+    var afterIndex;
+    if (b && b.type === 'text') {
+      var pos = Math.min(focus.pos == null ? b.text.length : focus.pos, b.text.length);
+      var before = b.text.slice(0, pos).replace(/\n$/, ''), after = b.text.slice(pos).replace(/^\n/, '');
+      var repl = [{ type: 'text', text: before }].concat(imgs, [{ type: 'text', text: after }]);
+      if (!before) repl.shift();
+      Array.prototype.splice.apply(blocks, [i, 1].concat(repl));
+      afterIndex = i + repl.length - 1;
+    } else {
+      blocks = blocks.concat(imgs, [{ type: 'text', text: '' }]);
+      afterIndex = blocks.length - 1;
+    }
+    renderPaper(afterIndex, 0);
+    saveDraftSoon();
+  }
+
+  $('add-photo').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files || []);
+    this.value = '';
+    if (!files.length) return;
+    var btn = $('add-photo'); btn.disabled = true;
+    msg('ed-msg', '写真を準備しています…');
+    files.reduce(function (p, f) {
+      return p.then(function (acc) { return compress(f).then(function (d) { acc.push(d); return acc; }); });
+    }, Promise.resolve([])).then(function (datas) {
+      insertImages(datas);
+      msg('ed-msg', '');
+    }).catch(function (e) {
+      msg('ed-msg', e.message || '写真を入れられませんでした', true);
+    }).then(function () { btn.disabled = false; });
+  });
+
+  // ---------- 下書き ----------
+  var saveTimer = null;
+  function saveDraftSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      var d = { author: $('author').value, title: $('title').value, blocks: blocks };
+      if (TK.store.set(DRAFT_KEY, d)) { $('saved').textContent = '下書きをこのスマホに保存しました'; return; }
+      var light = { author: d.author, title: d.title, blocks: blocks.filter(function (b) { return b.type === 'text'; }) };
+      $('saved').textContent = TK.store.set(DRAFT_KEY, light) ? '文章だけ下書きに保存しました（写真は容量の都合で保存できません）' : '';
+    }, 700);
+  }
+  $('title').addEventListener('input', saveDraftSoon);
+  $('author').addEventListener('change', function () { TK.store.set(AUTHOR_KEY, this.value); saveDraftSoon(); });
+
+  // ---------- 自分の記事 ----------
+  function renderMine() {
+    var mine = TK.store.get(MINE_KEY, []);
+    $('mine-count').textContent = String(mine.length);
+    var ul = $('mine-list'); ul.textContent = '';
+    if (!mine.length) { ul.appendChild(TK.el('li', 'hint', 'まだありません')); return; }
+    mine.forEach(function (m) {
+      var li = document.createElement('li');
+      var t = TK.el('div', 't');
+      var a = TK.el('a', null, m.title); a.href = '/blog/post.html?id=' + encodeURIComponent(m.id);
+      t.appendChild(a); t.appendChild(TK.el('span', null, TK.fmtDate(m.date)));
+      var del = TK.el('button', 'del', '削除'); del.type = 'button';
+      del.addEventListener('click', function () {
+        if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = '本当に消す'; return; }
+        del.disabled = true; del.textContent = '削除中…';
+        TK.api('delete', { id: m.id, deleteKey: m.deleteKey }).then(function () {
+          TK.store.set(MINE_KEY, TK.store.get(MINE_KEY, []).filter(function (x) { return x.id !== m.id; }));
+          renderMine();
+        }).catch(function (e) {
+          del.disabled = false; del.classList.remove('armed'); del.textContent = '削除';
+          msg('ed-msg', e.message, true);
+        });
+      });
+      li.appendChild(t); li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  // ---------- プレビューと投稿 ----------
+  function buildPost() {
+    var no = $('author').value === '' ? null : Number($('author').value);
+    var m = no == null ? null : TK.memberByNo(members, no);
+    var cleaned = blocks.filter(function (b) { return b.type === 'image' || b.text.trim() !== ''; });
+    return { member: m, title: $('title').value.trim(), blocks: cleaned };
+  }
+  $('to-preview').addEventListener('click', function () {
+    var p = buildPost();
+    if (!p.member) { msg('ed-msg', '「書いた人」を選んでください', true); $('author').focus(); return; }
+    if (!p.title) { msg('ed-msg', 'タイトルを書いてください', true); $('title').focus(); return; }
+    if (!p.blocks.length) { msg('ed-msg', '本文を書いてください', true); return; }
+    msg('ed-msg', '');
+    var post = { date: new Date().toISOString(), title: p.title, author: { no: p.member.no, name: p.member.name }, blocks: p.blocks };
+    TK.renderArticle(post, $('pv-article'), members);
+    msg('pv-msg', '');
+    $('preview').hidden = false;
+    $('preview').scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+    $('back').focus();
+  });
+  function closePreview() { $('preview').hidden = true; document.body.style.overflow = ''; }
+  $('back').addEventListener('click', closePreview);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('preview').hidden && !busy) closePreview(); });
+
+  $('publish').addEventListener('click', function () {
+    if (busy) return;
+    var p = buildPost();
+    var payload = {
+      passcode: TK.store.get(PASS_KEY, ''),
+      author: p.member.no,
+      title: p.title,
+      blocks: p.blocks.map(function (b) { return b.type === 'image' ? { type: 'image', data: b.data } : { type: 'text', text: b.text }; })
+    };
+    var size = JSON.stringify(payload).length;
+    if (size > 5500000) { msg('pv-msg', '写真が多すぎて送れません。何枚か外してからもう一度試してください。', true); return; }
+    busy = true;
+    $('publish').disabled = true; $('back').disabled = true; $('publish').textContent = '送信しています…';
+    TK.api('create', payload).then(function (res) {
+      var mine = TK.store.get(MINE_KEY, []);
+      mine.unshift({ id: res.id, title: p.title, date: new Date().toISOString(), deleteKey: res.deleteKey });
+      TK.store.set(MINE_KEY, mine);
+      TK.store.del(DRAFT_KEY);
+      blocks = [{ type: 'text', text: '' }];
+      $('title').value = '';
+      renderPaper(); renderMine();
+      $('done-link').href = '/blog/post.html?id=' + encodeURIComponent(res.id);
+      closePreview();
+      show('done');
+    }).catch(function (e) {
+      if (e.status === 401) {
+        TK.store.del(PASS_KEY);
+        closePreview();
+        show('gate');
+        msg('gate-msg', '合言葉が変わったようです。新しい合言葉を入れてください。下書きは残っています。', true);
+        return;
+      }
+      msg('pv-msg', e.message || '送信できませんでした。電波の良いところでもう一度試してください。', true);
+    }).then(function () {
+      busy = false;
+      $('publish').disabled = false; $('back').disabled = false; $('publish').textContent = 'この内容で投稿する';
+    });
+  });
+
+  $('again').addEventListener('click', function () { show('editor'); renderPaper(0); });
+
+  // ---------- 合言葉 ----------
+  $('gate-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('pass').value;
+    var b = this.querySelector('button'); b.disabled = true;
+    TK.api('check', { passcode: v }).then(function () {
+      TK.store.set(PASS_KEY, v);
+      msg('gate-msg', '');
+      startEditor();
+    }).catch(function (err) {
+      msg('gate-msg', err.message, true);
+    }).then(function () { b.disabled = false; });
+  });
+
+  function startEditor() {
+    show('editor');
+    var d = TK.store.get(DRAFT_KEY, null);
+    if (d && Array.isArray(d.blocks) && d.blocks.length) {
+      blocks = d.blocks;
+      if (blocks[blocks.length - 1].type !== 'text') blocks.push({ type: 'text', text: '' });
+      $('title').value = d.title || '';
+      if (d.author !== undefined && d.author !== '') $('author').value = d.author;
+      $('saved').textContent = '前回の下書きを開きました';
+    }
+    renderPaper();
+    renderMine();
+  }
+
+  TK.getMembers().then(function (list) {
+    members = list;
+    var sel = $('author');
+    list.forEach(function (m) {
+      var o = document.createElement('option');
+      o.value = String(m.no);
+      o.textContent = m.no + '　' + m.name + (m.role ? '（' + m.role + '）' : '');
+      sel.appendChild(o);
+    });
+    var last = TK.store.get(AUTHOR_KEY, '');
+    if (last !== '') sel.value = last;
+    if (TK.store.get(PASS_KEY, '')) startEditor(); else show('gate');
+  });
+})();
+</script>
+</body>
+</html>

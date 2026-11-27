@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>メンバーブログ｜太陽ノックス 公式サイト</title>
+<meta name="description" content="奈良県発の草野球チーム「太陽ノックス」のメンバーブログ。">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="太陽ノックス 公式サイト">
+<meta property="og:title" content="メンバーブログ｜太陽ノックス 公式サイト">
+<meta property="og:image" content="https://taiyo-knocks.netlify.app/images/ogp.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%231D4FB8'/%3E%3Cpath d='M12 8.5Q18.5 20 12 31.5M28 8.5Q21.5 20 28 31.5' fill='none' stroke='white' stroke-width='2' stroke-dasharray='2.5 2.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/blog/blog.css">
+</head>
+<body>
+<div class="tk-page">
+<header class="tk-header"><div class="tk-header-in">
+<a class="tk-logo" href="/">
+<svg viewBox="0 0 40 40" width="28" height="28" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#1D4FB8"></circle><path d="M12 8.5 Q18.5 20 12 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path><path d="M28 8.5 Q21.5 20 28 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path></svg>
+<span class="tk-logo-text"><span class="tk-logo-main">太陽ノックス</span><span class="tk-logo-sub">OFFICIAL WEB SITE</span></span>
+</a>
+<a class="tk-header-link" href="/blog/">BLOG</a>
+</div></header>
+
+<main class="tk-main">
+<div class="tk-heading"><p style="margin: 0; display: flex; align-items: baseline; gap: 12px"><span class="en">BLOG</span><span class="ja">メンバーブログ</span></p><span class="rule" aria-hidden="true"></span></div>
+<div id="article"><div class="tk-loading" role="status">読み込んでいます…</div></div>
+<div class="tk-art-foot">
+<a class="tk-btn ghost wide" id="more-by" href="/blog/" hidden>このメンバーの記事をもっと見る</a>
+<a class="tk-btn wide" href="/blog/">ブログ一覧へ</a>
+<a class="tk-btn ghost wide" href="/">トップページへ</a>
+</div>
+</main>
+
+<footer class="tk-footer">
+<p>※乃木坂46とは一切関係ありません。</p>
+<p>© 2026 太陽ノックス</p>
+</footer>
+</div>
+<script src="/blog/blog.js"></script>
+<script>
+(function () {
+  var box = document.getElementById('article');
+  var id = new URLSearchParams(location.search).get('id') || '';
+  if (!id) { location.replace('/blog/'); return; }
+  Promise.all([TK.getMembers(), TK.api('post?id=' + encodeURIComponent(id))]).then(function (res) {
+    var post = res[1].post;
+    TK.renderArticle(post, box, res[0]);
+    document.title = post.title + '｜' + post.author.name + '｜太陽ノックス メンバーブログ';
+    var more = document.getElementById('more-by');
+    more.href = '/blog/?member=' + post.author.no;
+    more.textContent = post.author.name + 'の記事をもっと見る';
+    more.hidden = false;
+  }).catch(function (e) {
+    box.textContent = '';
+    var m = TK.el('div', 'tk-msg err', e.status === 404 ? 'この記事は見つかりませんでした。削除された可能性があります。' : '記事を読み込めませんでした。時間をおいて開き直してください。');
+    box.appendChild(m);
+  });
+})();
+</script>
+</body>
+</html>

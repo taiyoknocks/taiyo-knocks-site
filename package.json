@@ -1,0 +1,12 @@
+{
+  "name": "taiyo-knocks-site",
+  "private": true,
+  "type": "module",
+  "description": "太陽ノックス公式サイト（静的ページ＋メンバーブログ用の関数）",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.12"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
