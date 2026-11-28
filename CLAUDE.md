@@ -22,14 +22,16 @@
 |---|---|
 | `site/index.html` | トップページ（**手で直さない**。下の手順で作り直す） |
 | `site/images/` | トップページの画像 |
-| `site/blog/` | ブログ一覧 `index.html`・記事 `post.html`・共通 `blog.css` / `blog.js`・メンバー `members.json` |
+| `site/blog/` | ブログ一覧 `index.html`・記事 `post.html`・コメントを書く `comment.html`・共通 `blog.css` / `blog.js`・メンバー `members.json` |
+| `site/privacy/index.html` | プライバシーポリシー（アクセス解析・コメントの扱い。全ページのフッターからリンク） |
 | `site/post/index.html` | メンバーが書くページ（noindex。サイトからはリンクせず、URLを共有して使う） |
-| `site/post/manage.html` | 管理用（全記事の削除・書き出し） |
+| `site/post/manage.html` | 管理用（全記事・全コメントの削除、書き出し） |
 | `netlify/functions/blog.mjs` | `/api/blog/*` の入口（Netlify Blobs のストア `tk-blog`） |
-| `netlify/lib/blog-core.mjs` | ブログの中身（posts / post / img / check / admin-check / create / update / delete / export） |
+| `netlify/lib/blog-core.mjs` | ブログの中身（posts / post / img / check / admin-check / create / update / delete / export / comments / comment / admin-comments / comment-delete） |
 | `tests/blog-core.test.mjs` | `npm test` |
 | `tools/design/Main.dc.html` | トップページのデザインの元データ |
 | `tools/build_top.py` | 元データ → `site/index.html` に変換（スライダー・メニュー・ニュース開閉・ブログ新着カードのJSもここで入れる） |
+| `tools/results/` | 試合結果のデータ `games.json`（新しい試合が上）と、RESULT欄を作る `render_result.py` |
 | `tools/devserver.mjs` | ブログを手元で試すサーバー（`node tools/devserver.mjs` → localhost:8787、テスト用合言葉 `taiyo` / 管理 `kantoku`） |
 
 ### トップページを直すとき
@@ -43,6 +45,9 @@
 - メンバーは `/post/` で合言葉を1回入れる（そのスマホに保存）→ 書く（文章と写真を自由に並べる、写真はスマホ側で1280pxに縮小）→ プレビュー → 投稿。
 - 投稿すると、そのスマホに「削除用の鍵」が保存され、そのスマホからだけ編集・削除できる。管理用合言葉ならどの記事でも削除・編集できる。
 - 編集では ID・投稿日時は変えない。写真は `{type:'image', keep:番号}` で残し、外した写真はサーバーからも消す。新しい写真の番号は使い回さない（画像URLは immutable キャッシュのため）。
+- コメント（乃木坂公式ブログと同じ形）：記事の下に「COMMENT (件数)」＋/−で開閉、古い順に「名前／NO.と日時／グレーの箱」。「コメントする」→ `/blog/comment.html?id=` でお名前・コメント → プレビュー → 送信 → 記事の `#c番号` へ戻る。
+  - 誰でも書ける・合言葉なし・承認なしですぐ表示（しみさんの希望で「B」）。**書いた人は消せない**（本家と同じ）。消せるのは管理ページ（管理用合言葉）だけ。番号はつめない。
+  - お名前20文字・本文1000文字。URLは不可（NFKCしてから判定）。見えない欄 `tk_hp` に入力があればロボット扱い。同じ人（IPを符号にしたもの）は同じ記事に30秒あける・10分で5件まで。直前と同じ内容は不可。記事を消すとコメントも消える。保存先 `comments/<記事ID>`（`{next, list}`、ETagでやり直し）。
 - 合言葉は日本語OK。全角半角・前後の空白の違いは同じとみなす（NFKC）。
 - 表示は乃木坂46公式ブログと同じ形：トップは新着4件の2列カード＋VIEW MORE、`/blog/` は「メンバーを選択」＋カード2列（12件/ページ）、メンバーか月を選ぶと「左に正方形の写真・右にタイトル」の一覧（10件/ページ）＋背番号の青い帯＋ARCHIVES。カードの丸アイコンはトップのメンバー欄の背番号の形。
 
@@ -56,9 +61,13 @@
 - スポンサー：SHOTBAR BUZZ（Instagram @buzz_2022_bar）、株式会社トクナガ（https://www.roof-tokunaga.com/）。どちらも掲載許可済み。
 - 11/23 ちえのわベースボールクラブ戦 14－2 勝ち（勝：ニブタクヤ、本：きょろ侍 3ラン）。点数はチームのPLAYアプリの方に合わせた。
 - 次の試合：12/6（日）13:00（予定）大和郡山市総合運動公園 多目的グランド vs ティターンズ。予告先発ニブタクヤ。
+- アクセス解析：Googleアナリティクス（測定ID G-8MWGBDW4TZ、しみさんのGoogleアカウント）。トップ・`/blog/`・記事ページに入っている（`/post/` と管理用には入れない）。記事ページは読み込み後にタイトル付きで1回数える。`?notrack` を付けて一度開いたスマホは数えない（`?track` で元に戻す）。Googleの規約で利用の明記が必要なので、全ページのフッターに「プライバシーポリシー」（`site/privacy/index.html`、記事ページと同じ枠）へのリンクあり。
 - Instagram @taiyo_knocks、YouTube https://www.youtube.com/channel/UCoVtau7pK26m3WbjXcuxjUQ（11/23開設）。
 
 ## 残っていること
 - 12/6 の開始時刻が決まったら更新（今は「13:00（予定）」）。
+- **試合結果欄は2試合目から新しい形に切り替える（見本はしみさんOK済み、2026/11/28）。** 12/6 の結果（PLAYアプリのスクショ）が来たら：`tools/results/games.json` の先頭に1試合足す → `python3 tools/results/render_result.py --apply` → `python3 tools/build_top.py` → スクショ → GO。NEXT GAME とトピックの更新も同じ公開にまとめる。
+  - 形：LATEST GAME（最新1試合の大きいカード、写真は任意）→ シーズン成績（○勝○敗○分・得点・失点）→ ALL GAMES（1試合1行、押すと開く、最初3試合＋VIEW MORE、2試合目から表示）。
+  - ルール：勝ち試合は「勝」、負け試合は「負」（引き分けはなし）。「本」は毎試合出し、なければ「なし」。
 - 本番での最初の投稿・編集を、しみさんのスマホで試してもらう。
 - いつか：独自ドメイン（.jp など）、「太陽ノックス」「太陽ノック」での検索上位、収益化。

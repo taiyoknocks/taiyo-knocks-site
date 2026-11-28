@@ -12,7 +12,21 @@ export const LIMITS = {
   blocksMax: 80,
 };
 
+// コメント（誰でも書ける。書いた人は消せない。消せるのは管理用の合言葉だけ）
+export const COMMENT_LIMITS = {
+  nameMax: 20,
+  textMax: 1000,
+  perPostMax: 2000,
+  intervalMs: 30 * 1000, // 同じ人が同じ記事に続けて送るときにあける時間
+  burstWindowMs: 10 * 60 * 1000,
+  burstMax: 5, // 10分のうちに同じ人が同じ記事に送れる数
+};
+
 const INDEX_KEY = 'index';
+const commentsKey = (id) => `comments/${id}`;
+
+// URLっぽいものは書き込めない（荒らし・宣伝よけ）。全角で書かれても見つけられるようにNFKCしてから調べる
+const URL_RE = /(https?:\/\/|www\.|[a-z0-9-]+\.(com|net|org|jp|io|co|xyz|info|ru|cn|me|app|dev|ly|gl|link|site|top|shop|biz|tk|cc|to)\b)/i;
 
 const json = (status, body, extraHeaders = {}) =>
   new Response(JSON.stringify(body), {
@@ -124,6 +138,30 @@ function excerptOf(blocks) {
   return t.length > 70 ? t.slice(0, 70) + '…' : t;
 }
 
+async function readComments(store, id) {
+  const res = await store.getWithMetadata(commentsKey(id), { type: 'json', consistency: 'strong' });
+  if (!res || !res.data) return { data: { next: 1, list: [] }, etag: null };
+  const d = res.data;
+  return { data: { next: Number(d.next) || 1, list: Array.isArray(d.list) ? d.list : [] }, etag: res.etag || null };
+}
+
+// 外に見せる形（送り主を見分ける符号 ip は出さない）
+const publicComment = (c) => ({ no: c.no, name: c.name, text: c.text, date: c.date });
+
+const charLen = (s) => [...s].length;
+
+function cleanName(v) {
+  return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function cleanText(v) {
+  return String(v == null ? '' : v)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .replace(/^\s+|\s+$/g, '');
+}
+
 async function readBody(req) {
   try {
     return await req.json();
@@ -132,10 +170,18 @@ async function readBody(req) {
   }
 }
 
-export async function handle(req, { store, env, now = () => new Date() }) {
+export async function handle(req, { store, env, now = () => new Date(), ip = '' }) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api\/blog\/?/, '').replace(/\/+$/, '');
   const method = req.method.toUpperCase();
+
+  // 記事のコメント一覧（誰でも読める。古い順）
+  if (method === 'GET' && path === 'comments') {
+    const id = url.searchParams.get('id') || '';
+    if (!ID_RE.test(id)) return json(404, { error: '記事が見つかりません' });
+    const { data } = await readComments(store, id);
+    return json(200, { comments: data.list.map(publicComment) });
+  }
 
   // ---- 読み出し（誰でも） ----
   if (method === 'GET' && path === 'posts') {
@@ -299,8 +345,91 @@ export async function handle(req, { store, env, now = () => new Date() }) {
     }
     await updateIndex(store, (list) => list.filter((e) => e.id !== id));
     for (let i = 1; i <= (post.images || 0); i++) await store.delete(`img/${id}/${i}`);
+    await store.delete(commentsKey(id));
     await store.delete(`post/${id}`);
     return json(200, { ok: true });
+  }
+
+  // ---- コメントを書く（誰でも。合言葉はいらない。書いた人は消せない） ----
+  if (path === 'comment') {
+    // 人には見えない欄（tk_hp）に何か入っていたらロボットとみなす
+    if (body.tk_hp) {
+      await sleep(600);
+      return json(400, { error: '送信できませんでした' });
+    }
+    const id = String(body.id || '');
+    if (!ID_RE.test(id)) return json(404, { error: '記事が見つかりません' });
+    const post = await store.get(`post/${id}`, { type: 'json', consistency: 'strong' });
+    if (!post) return json(404, { error: 'この記事は見つかりませんでした。削除された可能性があります' });
+
+    const name = cleanName(body.name);
+    const text = cleanText(body.text);
+    if (!name) return json(400, { error: 'お名前を書いてください' });
+    if (charLen(name) > COMMENT_LIMITS.nameMax) return json(400, { error: `お名前は${COMMENT_LIMITS.nameMax}文字までです` });
+    if (!text) return json(400, { error: 'コメントを書いてください' });
+    if (charLen(text) > COMMENT_LIMITS.textMax) return json(400, { error: `コメントは${COMMENT_LIMITS.textMax}文字までです` });
+    if (URL_RE.test((name + ' ' + text).normalize('NFKC'))) return json(400, { error: 'URL（リンク）は書き込めません' });
+
+    const clientIp =
+      ip || req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+    const who = sha256('tk-comment:' + clientIp).slice(0, 16);
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const { data, etag } = await readComments(store, id);
+      if (data.list.length >= COMMENT_LIMITS.perPostMax) return json(400, { error: 'この記事にはこれ以上コメントできません' });
+      const t = now().getTime();
+      const mine = data.list.filter((c) => c.ip === who).map((c) => t - Date.parse(c.date));
+      if (mine.some((ago) => ago < COMMENT_LIMITS.intervalMs)) {
+        return json(429, { error: '続けて送るときは、30秒ほどあけてから送ってください' });
+      }
+      if (mine.filter((ago) => ago < COMMENT_LIMITS.burstWindowMs).length >= COMMENT_LIMITS.burstMax) {
+        return json(429, { error: '短い時間にたくさん送られています。しばらくあけてから送ってください' });
+      }
+      const last = data.list[data.list.length - 1];
+      if (last && last.name === name && last.text === text) return json(409, { error: '同じコメントがすでに送られています' });
+      const c = { no: data.next, name, text, date: new Date(t).toISOString(), ip: who };
+      const next = { next: data.next + 1, list: [...data.list, c] };
+      const r = await store.setJSON(commentsKey(id), next, etag ? { onlyIfMatch: etag } : { onlyIfNew: true });
+      if (r && r.modified !== false) return json(200, { ok: true, no: c.no });
+      await sleep(80 * (attempt + 1));
+    }
+    throw new Error('comments-busy');
+  }
+
+  // ---- 全記事のコメント（管理者のみ。新しい順） ----
+  if (path === 'admin-comments') {
+    if (!adminPasscode || !passEqual(body.adminPasscode, adminPasscode)) {
+      await sleep(600);
+      return json(401, { error: '管理用の合言葉が違います' });
+    }
+    const { list } = await readIndex(store);
+    const out = [];
+    for (const e of list) {
+      const { data } = await readComments(store, e.id);
+      for (const c of data.list) out.push({ postId: e.id, postTitle: e.title, ...publicComment(c) });
+    }
+    out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    return json(200, { comments: out });
+  }
+
+  // ---- コメントを消す（管理者のみ）。番号はつめない ----
+  if (path === 'comment-delete') {
+    if (!adminPasscode || !passEqual(body.adminPasscode, adminPasscode)) {
+      await sleep(600);
+      return json(401, { error: '管理用の合言葉が違います' });
+    }
+    const id = String(body.id || '');
+    const no = Number(body.no);
+    if (!ID_RE.test(id) || !Number.isInteger(no)) return json(404, { error: 'コメントが見つかりません' });
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const { data, etag } = await readComments(store, id);
+      if (!data.list.some((c) => c.no === no)) return json(200, { ok: true, alreadyGone: true });
+      const next = { next: data.next, list: data.list.filter((c) => c.no !== no) };
+      const r = await store.setJSON(commentsKey(id), next, { onlyIfMatch: etag });
+      if (r && r.modified !== false) return json(200, { ok: true });
+      await sleep(80 * (attempt + 1));
+    }
+    throw new Error('comments-busy');
   }
 
   // ---- 全記事の書き出し（引っ越し用・管理者のみ） ----
@@ -315,7 +444,8 @@ export async function handle(req, { store, env, now = () => new Date() }) {
       const p = await store.get(`post/${e.id}`, { type: 'json', consistency: 'strong' });
       if (p) {
         const { deleteHash, ...pub } = p;
-        posts.push(pub);
+        const { data } = await readComments(store, e.id);
+        posts.push({ ...pub, comments: data.list.map(publicComment) });
       }
     }
     return json(200, { exportedAt: now().toISOString(), posts });

@@ -19,7 +19,7 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:8787');
   if (url.pathname.startsWith('/api/blog/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
-    const r = await handle(new Request(url, { method: req.method, headers: req.headers, body: ['GET','HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) }), { store, env, now: req.headers['x-test-now'] ? () => new Date(req.headers['x-test-now']) : undefined });
+    const r = await handle(new Request(url, { method: req.method, headers: req.headers, body: ['GET','HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) }), { store, env, ip: req.headers['x-test-ip'] || req.socket.remoteAddress || '', now: req.headers['x-test-now'] ? () => new Date(req.headers['x-test-now']) : undefined });
     res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(await r.arrayBuffer())); return;
   }
   let p = normalize(decodeURIComponent(url.pathname)); if (p.endsWith('/')) p += 'index.html';

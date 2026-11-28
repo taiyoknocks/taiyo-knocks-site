@@ -82,6 +82,19 @@
     return art;
   };
 
+  // コメント1件（名前／NO.と日時／グレーの箱に本文）
+  TK.commentItem = function (c) {
+    var li = el('li', 'tk-cm-item');
+    if (c.no) li.id = 'c' + c.no;
+    li.appendChild(el('div', 'tk-cm-name', c.name));
+    var meta = el('div', 'tk-cm-meta');
+    meta.appendChild(el('span', null, c.no ? 'NO.' + c.no : 'NO.-'));
+    meta.appendChild(el('span', null, TK.fmtDate(c.date)));
+    li.appendChild(meta);
+    li.appendChild(el('p', 'tk-cm-text', c.text));
+    return li;
+  };
+
   // チームのボールマーク（写真がない記事や、メンバー未選択の枠に使う）
   TK.ballMark = function (size) {
     var NS = 'http://www.w3.org/2000/svg';

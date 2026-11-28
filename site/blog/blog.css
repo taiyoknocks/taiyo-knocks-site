@@ -178,6 +178,27 @@ html { scroll-behavior: smooth; scroll-padding-top: calc(env(safe-area-inset-top
 .tk-art-fig img { display: block; width: 100%; height: auto; background: var(--pale); }
 .tk-art-foot { display: flex; flex-direction: column; gap: 12px; padding-top: 24px; border-top: 1px solid var(--line); }
 
+/* コメント（乃木坂公式ブログと同じ形：COMMENT (件数) ＋/− で開閉、NO.と日時、グレーの箱） */
+.tk-cm { border-top: 1px solid var(--line); }
+.tk-cm-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 76px; padding: 0; border: 0; background: none; color: var(--blue); font: inherit; text-align: left; cursor: pointer; }
+.tk-cm-h { display: flex; align-items: baseline; gap: 10px; }
+.tk-cm-h .en { font-family: 'Cinzel', 'Times New Roman', serif; font-weight: 500; font-size: 22px; letter-spacing: 0.14em; }
+.tk-cm-h .n { font-weight: 700; font-size: 20px; letter-spacing: 0.04em; }
+.tk-cm-pm { position: relative; flex: 0 0 22px; width: 22px; height: 22px; }
+.tk-cm-pm::before, .tk-cm-pm::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; margin-top: -0.75px; background: currentColor; }
+.tk-cm-pm::after { transform: rotate(90deg); transition: transform 0.2s; }
+.tk-cm-head[aria-expanded="true"] .tk-cm-pm::after { transform: rotate(0deg); }
+.tk-cm-body { display: flex; flex-direction: column; gap: 14px; padding-bottom: 8px; }
+.tk-cm-write { display: flex; justify-content: flex-end; }
+.tk-cm-write a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; color: var(--blue); }
+.tk-cm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 28px; }
+.tk-cm-item { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 80px); }
+.tk-cm-name { font-size: 15px; font-weight: 500; line-height: 1.6; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.tk-cm-meta { margin-top: 2px; display: flex; gap: 24px; font-family: 'Cinzel', 'Times New Roman', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--sub); }
+.tk-cm-text { margin: 10px 0 0; padding: 16px 18px; background: #F4F5F7; font-size: 14px; line-height: 1.9; letter-spacing: 0.03em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tk-cm-item.new .tk-cm-text { box-shadow: inset 3px 0 0 var(--sun); }
+.tk-cm-empty { margin: 0; padding: 16px 0 8px; text-align: center; font-size: 13px; line-height: 1.8; color: var(--sub); white-space: pre-line; }
+
 /* ボタン */
 .tk-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px;

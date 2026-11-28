@@ -49,6 +49,22 @@ restart();
 })();
 </script>
 '''%BLUE
+GA='''<!-- Google アナリティクス（アクセス数を見る用。?notrack で開いたスマホは数えない、?track で元に戻す） -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8MWGBDW4TZ"></script>
+<script>
+(function(){
+var ID='G-8MWGBDW4TZ';
+try{var q=location.search;
+if(/[?&]notrack\\b/.test(q))localStorage.setItem('tk_notrack','1');
+if(/[?&]track\\b/.test(q))localStorage.removeItem('tk_notrack');
+if(localStorage.getItem('tk_notrack')==='1')window['ga-disable-'+ID]=true;}catch(e){}
+window.dataLayer=window.dataLayer||[];
+window.gtag=function(){dataLayer.push(arguments);};
+gtag('js',new Date());
+gtag('config',ID,{});
+})();
+</script>
+'''
 CARD_CSS='''<style>
 /* ブログのカード（乃木坂と同じ2列。アイコンはメンバー欄の背番号を丸く切り取った形） */
 .tk-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -91,6 +107,7 @@ def build(mode):
     s=re.sub(r'<script type="text/x-dc".*?</script>\s*','',s,flags=re.S)
     s=s.replace('</body>',JS+'</body>')
     s=s.replace('</head>',CARD_CSS+'</head>',1)
+    s=s.replace('</head>',GA+'</head>',1)
     assert '{{' not in s and 'x-dc' not in s and 'support.js' not in s and '_blob' not in s and 'sc-if' not in s and 'onClick' not in s
     return s
 out=build('netlify')

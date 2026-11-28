@@ -13,6 +13,21 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%231D4FB8'/%3E%3Cpath d='M12 8.5Q18.5 20 12 31.5M28 8.5Q21.5 20 28 31.5' fill='none' stroke='white' stroke-width='2' stroke-dasharray='2.5 2.5'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/blog/blog.css">
+<!-- Google アナリティクス（アクセス数を見る用。?notrack で開いたスマホは数えない、?track で元に戻す） -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8MWGBDW4TZ"></script>
+<script>
+(function(){
+var ID='G-8MWGBDW4TZ';
+try{var q=location.search;
+if(/[?&]notrack\b/.test(q))localStorage.setItem('tk_notrack','1');
+if(/[?&]track\b/.test(q))localStorage.removeItem('tk_notrack');
+if(localStorage.getItem('tk_notrack')==='1')window['ga-disable-'+ID]=true;}catch(e){}
+window.dataLayer=window.dataLayer||[];
+window.gtag=function(){dataLayer.push(arguments);};
+gtag('js',new Date());
+gtag('config',ID,{send_page_view:false});
+})();
+</script>
 </head>
 <body>
 <div class="tk-page" id="top">
@@ -61,6 +76,13 @@
 </div>
 <div class="tk-art-wrap">
 <div id="article"><div class="tk-loading" role="status">読み込んでいます…</div></div>
+<section class="tk-cm" id="comments" hidden aria-label="コメント">
+<button class="tk-cm-head" id="cm-toggle" type="button" aria-expanded="false" aria-controls="cm-body"><span class="tk-cm-h"><span class="en">COMMENT</span><span class="n" id="cm-count">(0)</span></span><span class="tk-cm-pm" aria-hidden="true"></span></button>
+<div class="tk-cm-body" id="cm-body" hidden>
+<div class="tk-cm-write"><a id="cm-write" href="/blog/"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4C7 4 3 7.4 3 11.5c0 2.2 1.1 4.1 2.9 5.5L5 20.5l3.9-2c1 .3 2 .5 3.1.5 5 0 9-3.4 9-7.5S17 4 12 4z"></path></svg>コメントする</a></div>
+<ol class="tk-cm-list" id="cm-list"></ol>
+</div>
+</section>
 <div class="tk-art-foot">
 <a class="tk-btn ghost wide" id="more-by" href="/blog/" hidden>このメンバーの記事をもっと見る</a>
 <a class="tk-btn wide" href="/blog/">ブログ一覧へ</a>
@@ -89,6 +111,7 @@
 <a href="https://www.youtube.com/channel/UCoVtau7pK26m3WbjXcuxjUQ"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="4"></rect><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor" stroke="none"></path></svg>YouTube</a>
 </div>
 <p>※乃木坂46とは一切関係ありません。</p>
+<p><a href="/privacy/" style="color: #DCE5F7; text-decoration: underline">プライバシーポリシー</a></p>
 <p>© 2026 太陽ノックス</p>
 </div></footer>
 
@@ -99,6 +122,39 @@
   var box = document.getElementById('article');
   var id = new URLSearchParams(location.search).get('id') || '';
   if (!id) { location.replace('/blog/'); return; }
+  // コメント（最初は閉じておく。#comments か #c番号 で来たら開いてそこへ）
+  var cmBox = document.getElementById('comments');
+  var cmToggle = document.getElementById('cm-toggle');
+  var cmBody = document.getElementById('cm-body');
+  function setCm(open) { cmBody.hidden = !open; cmToggle.setAttribute('aria-expanded', String(open)); }
+  cmToggle.addEventListener('click', function () { setCm(cmBody.hidden); });
+  function loadComments(postId) {
+    document.getElementById('cm-write').href = '/blog/comment.html?id=' + encodeURIComponent(postId);
+    var list = document.getElementById('cm-list');
+    TK.api('comments?id=' + encodeURIComponent(postId)).then(function (res) {
+      var cs = res.comments || [];
+      document.getElementById('cm-count').textContent = '(' + cs.length + ')';
+      list.textContent = '';
+      if (!cs.length) list.appendChild(TK.el('li', 'tk-cm-empty', 'まだコメントはありません。\n最初のコメントを書いてみませんか？'));
+      var m = /^#c(\d+)$/.exec(location.hash);
+      cs.forEach(function (c) {
+        var li = TK.commentItem(c);
+        if (m && Number(m[1]) === c.no) li.classList.add('new');
+        list.appendChild(li);
+      });
+      cmBox.hidden = false;
+      if (location.hash === '#comments' || m) {
+        setCm(true);
+        var target = m ? document.getElementById('c' + m[1]) : cmBox;
+        if (target) setTimeout(function () { target.scrollIntoView({ block: 'start' }); }, 50);
+      }
+    }).catch(function () {
+      document.getElementById('cm-count').textContent = '';
+      list.textContent = '';
+      list.appendChild(TK.el('li', 'tk-cm-empty', 'コメントを読み込めませんでした。時間をおいて開き直してください。'));
+      cmBox.hidden = false;
+    });
+  }
   Promise.all([TK.getMembers(), TK.api('post?id=' + encodeURIComponent(id))]).then(function (res) {
     var post = res[1].post;
     TK.renderArticle(post, box, res[0]);
@@ -107,7 +163,10 @@
     more.href = '/blog/?member=' + post.author.no;
     more.textContent = post.author.name + 'の記事をもっと見る';
     more.hidden = false;
+    if (window.gtag) gtag('event', 'page_view', { page_title: document.title });
+    loadComments(id);
   }).catch(function (e) {
+    if (window.gtag) gtag('event', 'page_view', { page_title: '記事が見つからない｜太陽ノックス メンバーブログ' });
     box.textContent = '';
     var m = TK.el('div', 'tk-msg err', e.status === 404 ? 'この記事は見つかりませんでした。削除された可能性があります。' : '記事を読み込めませんでした。時間をおいて開き直してください。');
     box.appendChild(m);

@@ -16,6 +16,9 @@
 .mrow .t span { font-size: 11px; color: var(--sub); }
 .del { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid var(--danger); background: #FFFFFF; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .del.armed { background: var(--danger); color: #FFFFFF; }
+.mh { margin: 12px 0 0; font-size: 15px; font-weight: 700; letter-spacing: 0.08em; color: var(--blue); }
+.mrow .t .cm-text { font-size: 13px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mrow .t .cm-to { font-size: 11px; color: var(--sub); }
 </style>
 </head>
 <body>
@@ -28,7 +31,7 @@
 <div class="tk-heading"><h1><span class="en">ADMIN</span><span class="ja">ブログの管理</span></h1><span class="rule" aria-hidden="true"></span></div>
 
 <form id="login" style="display: flex; flex-direction: column; gap: 14px">
-<p class="hint" style="margin: 0; font-size: 12px; line-height: 1.8; color: var(--sub)">監督用のページです。管理用の合言葉を入れると、どの記事でも削除できます。</p>
+<p class="hint" style="margin: 0; font-size: 12px; line-height: 1.8; color: var(--sub)">監督用のページです。管理用の合言葉を入れると、どの記事・コメントでも削除できます。</p>
 <div><label class="ed-label" for="ap">管理用の合言葉</label><input class="ed-field" id="ap" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></div>
 <div id="login-msg" role="alert"></div>
 <button class="tk-btn wide" type="submit">入る</button>
@@ -36,7 +39,10 @@
 
 <section id="panel" hidden style="display: flex; flex-direction: column; gap: 16px">
 <div id="panel-msg" role="alert"></div>
+<h2 class="mh">記事</h2>
 <div id="rows"></div>
+<h2 class="mh">コメント（新しい順）</h2>
+<div id="cm-rows"></div>
 <button class="tk-btn ghost wide" type="button" id="export">全記事を書き出す（引っ越し・保存用）</button>
 </section>
 </main>
@@ -71,6 +77,44 @@
             .catch(function (e) { d.disabled = false; d.classList.remove('armed'); d.textContent = '削除'; msg('panel-msg', e.message, true); });
         });
         r.appendChild(t); r.appendChild(d); rows.appendChild(r);
+      });
+    }).catch(function (e) { rows.textContent = ''; msg('panel-msg', e.message, true); });
+    loadComments();
+  }
+
+  // 削除ボタン（1回目で「本当に消す」、2回目で消す）
+  function delButton(onDelete) {
+    var d = TK.el('button', 'del', '削除'); d.type = 'button';
+    d.addEventListener('click', function () {
+      if (!d.classList.contains('armed')) { d.classList.add('armed'); d.textContent = '本当に消す'; return; }
+      d.disabled = true; d.textContent = '削除中…';
+      onDelete().catch(function (e) { d.disabled = false; d.classList.remove('armed'); d.textContent = '削除'; msg('panel-msg', e.message, true); });
+    });
+    return d;
+  }
+
+  function loadComments() {
+    var rows = $('cm-rows'); rows.textContent = '';
+    rows.appendChild(TK.el('div', 'tk-loading', '読み込んでいます…'));
+    TK.api('admin-comments', { adminPasscode: admin }).then(function (res) {
+      rows.textContent = '';
+      var cs = res.comments || [];
+      if (!cs.length) { rows.appendChild(TK.el('div', 'tk-empty', 'まだコメントはありません')); return; }
+      cs.forEach(function (c) {
+        var r = TK.el('div', 'mrow');
+        var t = TK.el('div', 't');
+        var a = TK.el('a', null, c.name); a.href = '/blog/post.html?id=' + encodeURIComponent(c.postId) + '#c' + c.no;
+        t.appendChild(a);
+        t.appendChild(TK.el('span', null, 'NO.' + c.no + '　' + TK.fmtDate(c.date)));
+        t.appendChild(TK.el('div', 'cm-text', c.text));
+        t.appendChild(TK.el('div', 'cm-to', '記事：' + c.postTitle));
+        r.appendChild(t);
+        r.appendChild(delButton(function () {
+          return TK.api('comment-delete', { id: c.postId, no: c.no, adminPasscode: admin }).then(function () {
+            r.remove(); msg('panel-msg', c.name + 'さんのコメント（NO.' + c.no + '）を削除しました');
+          });
+        }));
+        rows.appendChild(r);
       });
     }).catch(function (e) { rows.textContent = ''; msg('panel-msg', e.message, true); });
   }
