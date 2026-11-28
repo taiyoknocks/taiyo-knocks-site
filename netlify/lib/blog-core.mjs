@@ -85,7 +85,8 @@ function findMember(no) {
   return members.find((m) => m.no === no) || null;
 }
 
-function normalizeBlocks(blocks) {
+// keepable: 編集のときだけ渡す。その記事にもともとある写真の番号（そのまま残す写真は { type:'image', keep:番号 } で送られてくる）
+function normalizeBlocks(blocks, keepable = null) {
   if (!Array.isArray(blocks) || blocks.length === 0 || blocks.length > LIMITS.blocksMax) return { error: '本文の形が正しくありません' };
   const out = [];
   let totalText = 0;
@@ -99,6 +100,10 @@ function normalizeBlocks(blocks) {
       totalText += text.length;
       if (text.trim() === '') continue;
       out.push({ type: 'text', text });
+    } else if (b.type === 'image' && b.keep !== undefined) {
+      if (!keepable || !Number.isInteger(b.keep) || !keepable.has(b.keep)) return { error: '前の写真が見つかりません。ページを開き直してください' };
+      images += 1;
+      out.push({ type: 'image', keep: b.keep });
     } else if (b.type === 'image') {
       const img = decodeImage(b.data);
       if (!img) return { error: '写真の形式が対応していないか、大きすぎます' };
@@ -147,7 +152,7 @@ export async function handle(req, { store, env, now = () => new Date() }) {
     return json(200, { post: pub }, { 'Cache-Control': 'public, max-age=0, must-revalidate' });
   }
 
-  const imgMatch = /^img\/(\d{8}-\d{6}-[0-9a-f]{4})\/(\d{1,2})$/.exec(path);
+  const imgMatch = /^img\/(\d{8}-\d{6}-[0-9a-f]{4})\/(\d{1,3})$/.exec(path);
   if (method === 'GET' && imgMatch) {
     const key = `img/${imgMatch[1]}/${imgMatch[2]}`;
     const res = await store.getWithMetadata(key, { type: 'arrayBuffer' });
@@ -222,6 +227,59 @@ export async function handle(req, { store, env, now = () => new Date() }) {
       return [entry, ...list.filter((e) => e.id !== id)];
     });
     return json(200, { ok: true, id, deleteKey });
+  }
+
+  // ---- 編集（書いた本人のスマホの鍵、または管理用の合言葉）。ID・投稿日時はそのまま ----
+  if (path === 'update') {
+    const id = String(body.id || '');
+    if (!ID_RE.test(id)) return json(404, { error: '記事が見つかりません' });
+    const post = await store.get(`post/${id}`, { type: 'json', consistency: 'strong' });
+    if (!post) return json(404, { error: 'この記事は見つかりませんでした。削除された可能性があります' });
+    const byOwner = typeof body.deleteKey === 'string' && body.deleteKey && safeEqual(sha256(body.deleteKey), post.deleteHash);
+    const byAdmin = adminPasscode && passEqual(body.adminPasscode, adminPasscode);
+    if (!byOwner && !byAdmin) {
+      await sleep(600);
+      return json(403, { error: 'この記事を編集する権限がありません' });
+    }
+    const member = body.author === undefined ? findMember(post.author.no) : findMember(Number(body.author));
+    if (!member) return json(400, { error: '名前を選んでください' });
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    if (!title) return json(400, { error: 'タイトルを書いてください' });
+    if (title.length > LIMITS.titleMax) return json(400, { error: `タイトルは${LIMITS.titleMax}文字までです` });
+
+    const prefix = `/api/blog/img/${id}/`;
+    const existing = new Set(
+      (post.blocks || []).filter((b) => b.type === 'image' && typeof b.src === 'string' && b.src.startsWith(prefix)).map((b) => Number(b.src.slice(prefix.length)))
+    );
+    const norm = normalizeBlocks(body.blocks, existing);
+    if (norm.error) return json(400, { error: norm.error });
+
+    // 新しい写真は今までに使った番号の続きから（同じ番号を使い回さない＝古い写真が表示されることがない）
+    let n = post.images || 0;
+    const used = new Set();
+    const blocks = [];
+    for (const b of norm.blocks) {
+      if (b.type === 'image' && b.keep !== undefined) {
+        used.add(b.keep);
+        blocks.push({ type: 'image', src: prefix + b.keep });
+      } else if (b.type === 'image') {
+        n += 1;
+        if (n > 999) return json(400, { error: 'この記事はこれ以上写真を入れ替えられません。新しく書き直してください' });
+        await store.set(`img/${id}/${n}`, b.img.buf, { metadata: { contentType: b.img.contentType } });
+        blocks.push({ type: 'image', src: prefix + n });
+      } else {
+        blocks.push(b);
+      }
+    }
+    const author = { no: member.no, name: member.name };
+    const thumb = (blocks.find((b) => b.type === 'image') || {}).src || null;
+    const next = { ...post, title, author, blocks, images: n, updatedAt: now().toISOString() };
+    await store.setJSON(`post/${id}`, next);
+    await updateIndex(store, (list) =>
+      list.map((e) => (e.id === id ? { ...e, title, author, thumb, excerpt: excerptOf(blocks) } : e))
+    );
+    for (const k of existing) if (!used.has(k)) await store.delete(`img/${id}/${k}`);
+    return json(200, { ok: true, id });
   }
 
   // ---- 削除（書いた本人のスマホの鍵、または管理用の合言葉） ----

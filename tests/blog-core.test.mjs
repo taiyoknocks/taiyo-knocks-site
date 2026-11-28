@@ -106,6 +106,44 @@ test('投稿 → 一覧と記事と画像が読める → 本人の鍵で削除'
   assert.equal(store._map.has(`img/${id}/1`), false);
 });
 
+test('編集：写真を残す・外す・足す、日時はそのまま、古い写真は消える', async () => {
+  const store = memoryStore();
+  const PNG = 'data:image/png;base64,' + Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9]).toString('base64');
+  const created = await handle(
+    req('POST', 'create', { passcode: 'taiyo', author: 43, title: '元のタイトル', blocks: [{ type: 'text', text: '最初' }, { type: 'image', data: JPEG }, { type: 'text', text: '真ん中' }, { type: 'image', data: JPEG }] }),
+    { store, env, now: () => new Date('2026-11-28T03:00:00Z') }
+  );
+  const { id, deleteKey } = await created.json();
+  const upd = (body, extra = {}) => handle(req('POST', 'update', { id, ...body }), { store, env, now: () => new Date('2026-11-29T03:00:00Z'), ...extra });
+
+  // 1枚目を外して、2枚目を先頭へ、新しい写真を最後に足す
+  const r = await upd({ deleteKey, title: '直したタイトル', blocks: [{ type: 'image', keep: 2 }, { type: 'text', text: '書き直した' }, { type: 'image', data: PNG }] });
+  assert.equal(r.status, 200);
+  const one = (await (await handle(req('GET', 'post?id=' + id), { store, env })).json()).post;
+  assert.equal(one.title, '直したタイトル');
+  assert.equal(one.date, '2026-11-28T03:00:00.000Z', '投稿日時は変わらない');
+  assert.deepEqual(one.blocks.map((b) => b.src || b.text), [`/api/blog/img/${id}/2`, '書き直した', `/api/blog/img/${id}/3`]);
+  assert.equal(store._map.has(`img/${id}/1`), false, '外した写真は消える');
+  assert.equal(store._map.get(`img/${id}/3`).metadata.contentType, 'image/png');
+  const list = (await (await handle(req('GET', 'posts'), { store, env })).json()).posts;
+  assert.equal(list[0].title, '直したタイトル');
+  assert.equal(list[0].thumb, `/api/blog/img/${id}/2`);
+  assert.equal(list[0].date, '2026-11-28T03:00:00.000Z');
+
+  // 権限・おかしな送信
+  assert.equal((await upd({ deleteKey: 'wrong', title: 'x', blocks: [{ type: 'text', text: 'x' }] })).status, 403);
+  assert.equal((await upd({ deleteKey, title: 'x', blocks: [{ type: 'image', keep: 1 }] })).status, 400, 'もう無い写真は残せない');
+  assert.equal((await upd({ deleteKey, title: '', blocks: [{ type: 'text', text: 'x' }] })).status, 400);
+  assert.equal((await handle(req('POST', 'create', { passcode: 'taiyo', author: 43, title: 't', blocks: [{ type: 'image', keep: 2 }] }), { store, env })).status, 400, '新規投稿で keep は使えない');
+  assert.equal((await handle(req('POST', 'update', { id: '20260101-000000-abcd', deleteKey, title: 'x', blocks: [{ type: 'text', text: 'x' }] }), { store, env })).status, 404);
+
+  // 管理用の合言葉でも編集でき、削除すると全部の写真が消える
+  assert.equal((await upd({ adminPasscode: 'kantoku', title: '管理者が直した', blocks: [{ type: 'text', text: 'ok' }] })).status, 200);
+  assert.equal(store._map.has(`img/${id}/2`), false);
+  assert.equal((await handle(req('POST', 'delete', { id, deleteKey }), { store, env })).status, 200);
+  assert.equal([...store._map.keys()].filter((k) => k.startsWith('img/')).length, 0);
+});
+
 test('管理用の合言葉で削除できる', async () => {
   const store = memoryStore();
   const r = await handle(req('POST', 'create', { passcode: 'taiyo', author: 11, title: 't', blocks: [{ type: 'text', text: 'a' }] }), { store, env });

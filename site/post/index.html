@@ -34,8 +34,14 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
 .mine .t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .mine .t a { font-size: 14px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
 .mine .t span { font-family: 'Cinzel', serif; font-size: 11px; color: var(--sub); }
-.mine .del { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid var(--danger); background: #FFFFFF; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.mine .acts { flex: 0 0 auto; display: flex; gap: 6px; }
+.mine .del, .mine .edit { flex: 0 0 auto; min-height: 44px; padding: 0 12px; border: 1px solid var(--danger); background: #FFFFFF; color: var(--danger); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.mine .edit { border-color: var(--blue); color: var(--blue); }
+.mine .edit:disabled { opacity: 0.6; cursor: default; }
 .mine .del.armed { background: var(--danger); color: #FFFFFF; }
+.editing { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--sun); color: var(--ink); font-size: 13px; font-weight: 700; line-height: 1.6; }
+.editing span { min-width: 0; overflow-wrap: anywhere; }
+.editing button { flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid var(--ink); background: #FFFFFF; color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .done { display: flex; flex-direction: column; gap: 14px; align-items: stretch; text-align: center; padding: 24px 0; }
 .done .big { font-family: 'Shippori Mincho', serif; font-weight: 600; font-size: 22px; }
 </style>
@@ -65,6 +71,7 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
 
 <!-- 書く -->
 <section id="editor" hidden style="display: flex; flex-direction: column; gap: 18px">
+<div class="editing" id="editing" hidden><span id="editing-text">編集中</span><button type="button" id="cancel-edit">編集をやめる</button></div>
 <div><label class="ed-label" for="author">書いた人</label><select class="ed-field" id="author"><option value="">名前を選んでください</option></select></div>
 <div><label class="ed-label" for="title">タイトル</label><input class="ed-field ed-title" id="title" type="text" maxlength="60" placeholder="例：今日のごはん"></div>
 <div>
@@ -86,8 +93,8 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
 <!-- 完了 -->
 <section id="done" hidden>
 <div class="done">
-<p class="big">投稿しました！</p>
-<p class="hint">ブログに載りました。このスマホから書いた記事は、「ブログを書く」画面の下からいつでも削除できます。</p>
+<p class="big" id="done-big">投稿しました！</p>
+<p class="hint">ブログに載りました。このスマホから書いた記事は、「ブログを書く」画面の下からいつでも編集・削除できます。</p>
 <a class="tk-btn wide" id="done-link" href="/blog/">記事を見る</a>
 <button class="tk-btn ghost wide" type="button" id="again">もう1本書く</button>
 </div>
@@ -117,6 +124,7 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
   var blocks = [{ type: 'text', text: '' }];
   var focus = { index: 0, pos: 0 };
   var busy = false;
+  var editing = null; // 編集中の記事 { id, deleteKey, title }。新しく書くときは null
 
   function show(id) {
     ['gate', 'editor', 'done'].forEach(function (s) { $(s).hidden = s !== id; });
@@ -246,14 +254,19 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
 
   // ---------- 下書き ----------
   var saveTimer = null;
+  // 編集中は新しい記事の下書きを上書きしない
+  function saveDraftNow() {
+    clearTimeout(saveTimer);
+    if (editing) return;
+    var d = { author: $('author').value, title: $('title').value, blocks: blocks };
+    if (TK.store.set(DRAFT_KEY, d)) { $('saved').textContent = '下書きをこのスマホに保存しました'; return; }
+    var light = { author: d.author, title: d.title, blocks: blocks.filter(function (b) { return b.type === 'text'; }) };
+    $('saved').textContent = TK.store.set(DRAFT_KEY, light) ? '文章だけ下書きに保存しました（写真は容量の都合で保存できません）' : '';
+  }
   function saveDraftSoon() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () {
-      var d = { author: $('author').value, title: $('title').value, blocks: blocks };
-      if (TK.store.set(DRAFT_KEY, d)) { $('saved').textContent = '下書きをこのスマホに保存しました'; return; }
-      var light = { author: d.author, title: d.title, blocks: blocks.filter(function (b) { return b.type === 'text'; }) };
-      $('saved').textContent = TK.store.set(DRAFT_KEY, light) ? '文章だけ下書きに保存しました（写真は容量の都合で保存できません）' : '';
-    }, 700);
+    if (editing) return;
+    saveTimer = setTimeout(saveDraftNow, 700);
   }
   $('title').addEventListener('input', saveDraftSoon);
   $('author').addEventListener('change', function () { TK.store.set(AUTHOR_KEY, this.value); saveDraftSoon(); });
@@ -269,22 +282,87 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
       var t = TK.el('div', 't');
       var a = TK.el('a', null, m.title); a.href = '/blog/post.html?id=' + encodeURIComponent(m.id);
       t.appendChild(a); t.appendChild(TK.el('span', null, TK.fmtDate(m.date)));
+      var acts = TK.el('div', 'acts');
+      var ed = TK.el('button', 'edit', editing && editing.id === m.id ? '編集中' : '編集'); ed.type = 'button';
+      ed.disabled = !!(editing && editing.id === m.id);
+      ed.addEventListener('click', function () { startEdit(m, ed); });
       var del = TK.el('button', 'del', '削除'); del.type = 'button';
       del.addEventListener('click', function () {
         if (!del.classList.contains('armed')) { del.classList.add('armed'); del.textContent = '本当に消す'; return; }
         del.disabled = true; del.textContent = '削除中…';
         TK.api('delete', { id: m.id, deleteKey: m.deleteKey }).then(function () {
           TK.store.set(MINE_KEY, TK.store.get(MINE_KEY, []).filter(function (x) { return x.id !== m.id; }));
+          if (editing && editing.id === m.id) leaveEdit();
           renderMine();
         }).catch(function (e) {
           del.disabled = false; del.classList.remove('armed'); del.textContent = '削除';
           msg('ed-msg', e.message, true);
         });
       });
-      li.appendChild(t); li.appendChild(del);
+      acts.appendChild(ed); acts.appendChild(del);
+      li.appendChild(t); li.appendChild(acts);
       ul.appendChild(li);
     });
   }
+
+  // ---------- 編集 ----------
+  var IMG_RE = /^\/api\/blog\/img\/\d{8}-\d{6}-[0-9a-f]{4}\/(\d+)$/;
+  function setEditUi() {
+    $('editing').hidden = !editing;
+    if (editing) $('editing-text').textContent = '「' + editing.title + '」を編集中';
+    $('publish').textContent = editing ? 'この内容で更新する' : 'この内容で投稿する';
+    $('pv-bar').textContent = editing ? 'プレビュー（まだ更新されていません）' : 'プレビュー（まだ公開されていません）';
+  }
+  function startEdit(m, btn) {
+    if (busy) return;
+    btn.disabled = true; btn.textContent = '読み込み中…';
+    msg('ed-msg', '');
+    TK.api('post?id=' + encodeURIComponent(m.id)).then(function (res) {
+      var p = res.post;
+      var list = [];
+      (p.blocks || []).forEach(function (b) {
+        if (b.type === 'image') {
+          var mm = IMG_RE.exec(b.src || '');
+          if (!mm) return;
+          // 写真の前後に必ず文字の欄を置いて、写真の間にも書き足せるようにする
+          if (!list.length || list[list.length - 1].type !== 'text') list.push({ type: 'text', text: '' });
+          list.push({ type: 'image', data: b.src, keep: Number(mm[1]) });
+        } else if (b.type === 'text') {
+          if (list.length && list[list.length - 1].type === 'text') list[list.length - 1].text += '\n' + b.text;
+          else list.push({ type: 'text', text: b.text });
+        }
+      });
+      if (!list.length || list[list.length - 1].type !== 'text') list.push({ type: 'text', text: '' });
+      if (!editing && saveTimer) saveDraftNow(); // 書きかけの新しい記事は下書きに残してから切り替える
+      editing = { id: p.id, deleteKey: m.deleteKey, title: p.title, date: p.date };
+      blocks = list;
+      $('title').value = p.title;
+      $('author').value = String(p.author.no);
+      $('saved').textContent = '';
+      setEditUi();
+      renderPaper();
+      renderMine();
+      window.scrollTo(0, 0);
+    }).catch(function (e) {
+      btn.disabled = false; btn.textContent = '編集';
+      msg('ed-msg', e.status === 404 ? 'この記事は見つかりませんでした。削除された可能性があります。' : (e.message || '記事を読み込めませんでした'), true);
+    });
+  }
+  // 編集をやめて、新しく書く画面（前の下書きがあればそれ）に戻す
+  function leaveEdit() {
+    editing = null;
+    setEditUi();
+    var d = TK.store.get(DRAFT_KEY, null);
+    blocks = d && Array.isArray(d.blocks) && d.blocks.length ? d.blocks : [{ type: 'text', text: '' }];
+    if (blocks[blocks.length - 1].type !== 'text') blocks.push({ type: 'text', text: '' });
+    $('title').value = d ? d.title || '' : '';
+    var a = d && d.author !== undefined && d.author !== '' ? d.author : TK.store.get(AUTHOR_KEY, '');
+    $('author').value = a;
+    $('saved').textContent = d ? '書きかけの下書きに戻りました' : '';
+    renderPaper();
+    renderMine();
+  }
+  $('cancel-edit').addEventListener('click', function () { if (!busy) { leaveEdit(); window.scrollTo(0, 0); } });
 
   // ---------- プレビューと投稿 ----------
   function buildPost() {
@@ -299,7 +377,7 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
     if (!p.title) { msg('ed-msg', 'タイトルを書いてください', true); $('title').focus(); return; }
     if (!p.blocks.length) { msg('ed-msg', '本文を書いてください', true); return; }
     msg('ed-msg', '');
-    var post = { date: new Date().toISOString(), title: p.title, author: { no: p.member.no, name: p.member.name }, blocks: p.blocks };
+    var post = { date: editing && editing.date ? editing.date : new Date().toISOString(), title: p.title, author: { no: p.member.no, name: p.member.name }, blocks: p.blocks };
     TK.renderArticle(post, $('pv-article'), members);
     msg('pv-msg', '');
     $('preview').hidden = false;
@@ -318,10 +396,14 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
       passcode: TK.store.get(PASS_KEY, ''),
       author: p.member.no,
       title: p.title,
-      blocks: p.blocks.map(function (b) { return b.type === 'image' ? { type: 'image', data: b.data } : { type: 'text', text: b.text }; })
+      blocks: p.blocks.map(function (b) {
+        if (b.type !== 'image') return { type: 'text', text: b.text };
+        return b.keep !== undefined ? { type: 'image', keep: b.keep } : { type: 'image', data: b.data };
+      })
     };
     var size = JSON.stringify(payload).length;
     if (size > 5500000) { msg('pv-msg', '写真が多すぎて送れません。何枚か外してからもう一度試してください。', true); return; }
+    if (editing) { publishEdit(p, payload); return; }
     busy = true;
     $('publish').disabled = true; $('back').disabled = true; $('publish').textContent = '送信しています…';
     TK.api('create', payload).then(function (res) {
@@ -333,6 +415,7 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
       $('title').value = '';
       renderPaper(); renderMine();
       $('done-link').href = '/blog/post.html?id=' + encodeURIComponent(res.id);
+      $('done-big').textContent = '投稿しました！';
       closePreview();
       show('done');
     }).catch(function (e) {
@@ -349,6 +432,28 @@ select.ed-field { appearance: none; -webkit-appearance: none; background-image: 
       $('publish').disabled = false; $('back').disabled = false; $('publish').textContent = 'この内容で投稿する';
     });
   });
+
+  function publishEdit(p, payload) {
+    var target = editing;
+    busy = true;
+    $('publish').disabled = true; $('back').disabled = true; $('publish').textContent = '送信しています…';
+    TK.api('update', { id: target.id, deleteKey: target.deleteKey, author: payload.author, title: payload.title, blocks: payload.blocks }).then(function () {
+      TK.store.set(MINE_KEY, TK.store.get(MINE_KEY, []).map(function (x) { return x.id === target.id ? Object.assign({}, x, { title: p.title }) : x; }));
+      $('done-link').href = '/blog/post.html?id=' + encodeURIComponent(target.id);
+      $('done-big').textContent = '更新しました！';
+      closePreview();
+      leaveEdit();
+      show('done');
+    }).catch(function (e) {
+      var text = e.status === 404 ? 'この記事は見つかりませんでした。削除された可能性があります。'
+        : e.status === 403 ? 'このスマホからはこの記事を編集できません。'
+        : (e.message || '送信できませんでした。電波の良いところでもう一度試してください。');
+      msg('pv-msg', text, true);
+    }).then(function () {
+      busy = false;
+      $('publish').disabled = false; $('back').disabled = false; setEditUi();
+    });
+  }
 
   $('again').addEventListener('click', function () { show('editor'); renderPaper(0); });
 
