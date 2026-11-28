@@ -78,8 +78,8 @@ gtag('config',ID,{send_page_view:false});
 <div id="article"><div class="tk-loading" role="status">読み込んでいます…</div></div>
 <section class="tk-cm" id="comments" hidden aria-label="コメント">
 <button class="tk-cm-head" id="cm-toggle" type="button" aria-expanded="false" aria-controls="cm-body"><span class="tk-cm-h"><span class="en">COMMENT</span><span class="n" id="cm-count">(0)</span></span><span class="tk-cm-pm" aria-hidden="true"></span></button>
-<div class="tk-cm-body" id="cm-body" hidden>
 <div class="tk-cm-write"><a id="cm-write" href="/blog/"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 4C7 4 3 7.4 3 11.5c0 2.2 1.1 4.1 2.9 5.5L5 20.5l3.9-2c1 .3 2 .5 3.1.5 5 0 9-3.4 9-7.5S17 4 12 4z"></path></svg>コメントする</a></div>
+<div class="tk-cm-body" id="cm-body" hidden>
 <ol class="tk-cm-list" id="cm-list"></ol>
 </div>
 </section>
@@ -135,7 +135,7 @@ gtag('config',ID,{send_page_view:false});
       var cs = res.comments || [];
       document.getElementById('cm-count').textContent = '(' + cs.length + ')';
       list.textContent = '';
-      if (!cs.length) list.appendChild(TK.el('li', 'tk-cm-empty', 'まだコメントはありません。\n最初のコメントを書いてみませんか？'));
+      cmToggle.disabled = !cs.length; // 0件なら＋を出さない（開くものがないため）
       var m = /^#c(\d+)$/.exec(location.hash);
       cs.forEach(function (c) {
         var li = TK.commentItem(c);
@@ -143,7 +143,7 @@ gtag('config',ID,{send_page_view:false});
         list.appendChild(li);
       });
       cmBox.hidden = false;
-      if (location.hash === '#comments' || m) {
+      if (cs.length && (location.hash === '#comments' || m)) {
         setCm(true);
         var target = m ? document.getElementById('c' + m[1]) : cmBox;
         if (target) setTimeout(function () { target.scrollIntoView({ block: 'start' }); }, 50);
@@ -152,6 +152,7 @@ gtag('config',ID,{send_page_view:false});
       document.getElementById('cm-count').textContent = '';
       list.textContent = '';
       list.appendChild(TK.el('li', 'tk-cm-empty', 'コメントを読み込めませんでした。時間をおいて開き直してください。'));
+      cmToggle.disabled = true; cmBody.hidden = false;
       cmBox.hidden = false;
     });
   }
