@@ -29,6 +29,13 @@ function safeEqual(a, b) {
   return timingSafeEqual(ha, hb);
 }
 
+// 合言葉の比較。全角・半角の違い（ＡとA、ｱとア）や前後の空白は同じとみなす
+const normPass = (s) => String(s || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+function passEqual(input, expected) {
+  if (typeof expected !== 'string') return false;
+  return safeEqual(normPass(input), normPass(expected));
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeId(now) {
@@ -165,14 +172,14 @@ export async function handle(req, { store, env, now = () => new Date() }) {
   // ---- 合言葉の確認 ----
   if (path === 'check') {
     if (!passcode) return json(503, { error: '合言葉がまだ設定されていません' });
-    if (safeEqual(String(body.passcode || ''), passcode)) return json(200, { ok: true });
+    if (passEqual(body.passcode, passcode)) return json(200, { ok: true });
     await sleep(600);
     return json(401, { error: '合言葉が違います' });
   }
 
   if (path === 'admin-check') {
     if (!adminPasscode) return json(503, { error: '管理用の合言葉がまだ設定されていません' });
-    if (safeEqual(String(body.adminPasscode || ''), adminPasscode)) return json(200, { ok: true });
+    if (passEqual(body.adminPasscode, adminPasscode)) return json(200, { ok: true });
     await sleep(600);
     return json(401, { error: '管理用の合言葉が違います' });
   }
@@ -180,7 +187,7 @@ export async function handle(req, { store, env, now = () => new Date() }) {
   // ---- 投稿 ----
   if (path === 'create') {
     if (!passcode) return json(503, { error: '合言葉がまだ設定されていません' });
-    if (!safeEqual(String(body.passcode || ''), passcode)) {
+    if (!passEqual(body.passcode, passcode)) {
       await sleep(600);
       return json(401, { error: '合言葉が違います' });
     }
@@ -227,7 +234,7 @@ export async function handle(req, { store, env, now = () => new Date() }) {
       return json(200, { ok: true, alreadyGone: true });
     }
     const byOwner = typeof body.deleteKey === 'string' && body.deleteKey && safeEqual(sha256(body.deleteKey), post.deleteHash);
-    const byAdmin = adminPasscode && safeEqual(String(body.adminPasscode || ''), adminPasscode);
+    const byAdmin = adminPasscode && passEqual(body.adminPasscode, adminPasscode);
     if (!byOwner && !byAdmin) {
       await sleep(600);
       return json(403, { error: 'この記事を消す権限がありません' });
@@ -240,7 +247,7 @@ export async function handle(req, { store, env, now = () => new Date() }) {
 
   // ---- 全記事の書き出し（引っ越し用・管理者のみ） ----
   if (path === 'export') {
-    if (!adminPasscode || !safeEqual(String(body.adminPasscode || ''), adminPasscode)) {
+    if (!adminPasscode || !passEqual(body.adminPasscode, adminPasscode)) {
       await sleep(600);
       return json(401, { error: '管理用の合言葉が違います' });
     }

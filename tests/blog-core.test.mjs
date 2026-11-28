@@ -55,6 +55,19 @@ test('合言葉の確認', async () => {
   assert.equal((await handle(req('POST', 'check', { passcode: 'taiyo' }), { store, env: {} })).status, 503);
 });
 
+test('日本語の合言葉：全角・半角や前後の空白の違いは通す', async () => {
+  const store = memoryStore();
+  const jp = { BLOG_PASSCODE: '太陽ノックス2026', BLOG_ADMIN_PASSCODE: 'カントク' };
+  const check = async (path, body) => (await handle(req('POST', path, body), { store, env: jp })).status;
+  assert.equal(await check('check', { passcode: '太陽ノックス2026' }), 200);
+  assert.equal(await check('check', { passcode: ' 太陽ノックス２０２６　' }), 200);
+  assert.equal(await check('check', { passcode: '太陽ﾉｯｸｽ2026' }), 200);
+  assert.equal(await check('check', { passcode: '太陽ノック2026' }), 401);
+  assert.equal(await check('check', { passcode: '' }), 401);
+  assert.equal(await check('admin-check', { adminPasscode: 'ｶﾝﾄｸ' }), 200);
+  assert.equal(await check('admin-check', { adminPasscode: 'かんとく' }), 401);
+});
+
 test('投稿 → 一覧と記事と画像が読める → 本人の鍵で削除', async () => {
   const store = memoryStore();
   const body = {
