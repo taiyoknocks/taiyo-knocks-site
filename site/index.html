@@ -25,6 +25,20 @@ a:focus-visible,button:focus-visible{outline:2px solid #1D4FB8;outline-offset:2p
 .tk-summary{list-style:none}.tk-summary::-webkit-details-marker{display:none}
 .tk-summary:focus-visible{outline:2px solid #FFC400;outline-offset:3px}
 </style>
+<style>
+/* ブログのカード（乃木坂と同じ2列。アイコンはメンバー欄の背番号を丸く切り取った形） */
+.tk-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tk-cards li{display:flex;min-width:0}
+.tk-card{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px 14px 14px;border:1px solid #CDD3DE;background:#FFFFFF;color:#1A2233;text-decoration:none}
+.tk-card-who{display:flex;align-items:center;gap:10px;min-width:0}
+.tk-card-av{flex:0 0 30px;width:30px;height:30px;border-radius:50%;background:#EEF3FB;display:flex;align-items:center;justify-content:center;font-family:'Cinzel','Times New Roman',serif;font-weight:600;font-size:13px;line-height:1;color:#1D4FB8}
+.tk-card-name{min-width:0;font-size:12px;letter-spacing:.1em;color:#5B6478;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-card-img{display:block;width:100%;aspect-ratio:10/11;object-fit:cover;background:#EEF3FB;clip-path:polygon(0 0,100% 0,100% 82%,0 100%)}
+.tk-card-ph{width:100%;aspect-ratio:10/11;display:flex;align-items:center;justify-content:center}
+.tk-card-title{font-size:13px;line-height:1.65;letter-spacing:.08em;color:#3D4352;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tk-card-date{margin-top:auto;font-family:'Cinzel','Times New Roman',serif;font-size:11px;letter-spacing:.08em;color:#5B6478}
+@media (hover:hover){.tk-card:hover{border-color:#1D4FB8;color:#1A2233}}
+</style>
 </head>
 <body>
 <div style="font-family: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; color: #1A2233; background: #E3E9F4; min-width: 0">
@@ -440,13 +454,16 @@ var nw=document.getElementById('tk-news-wrap'),nt=document.getElementById('tk-ne
 if(nw&&nt){nt.addEventListener('click',function(){var o=nw.hidden;nw.hidden=!o;nt.setAttribute('aria-expanded',o?'true':'false');nt.textContent=o?'CLOSE':'VIEW MORE';});}
 var bl=document.getElementById('tk-blog-latest');
 if(bl&&window.fetch){fetch('/api/blog/posts',{cache:'no-store'}).then(function(r){return r.ok?r.json():{posts:[]};}).then(function(d){
-var ps=(d.posts||[]).slice(0,3);bl.textContent='';
-function mk(t,st,tx){var e=document.createElement(t);if(st)e.setAttribute('style',st);if(tx!=null)e.textContent=tx;return e;}
-function fd(iso){var x=new Date(new Date(iso).getTime()+324e5),z=function(n){return(n<10?'0':'')+n;};return x.getUTCFullYear()+'.'+z(x.getUTCMonth()+1)+'.'+z(x.getUTCDate());}
-if(!ps.length){bl.appendChild(mk('li','padding: 28px 8px; text-align: center; font-size: 13px; line-height: 1.8; color: #5B6478; border-bottom: 1px solid #D6DDEA','まだ記事はありません。最初の1本をお楽しみに。'));return;}
-ps.forEach(function(p){var li=mk('li','border-bottom: 1px solid #D6DDEA');var a=mk('a','display: flex; align-items: center; gap: 14px; padding: 16px 2px; color: #1A2233; text-decoration: none');a.href='/blog/post.html?id='+encodeURIComponent(p.id);
-if(p.thumb){var im=mk('img','display: block; flex: 0 0 84px; width: 84px; height: 84px; object-fit: cover; background: #EEF3FB');im.src=p.thumb;im.alt='';im.loading='lazy';a.appendChild(im);}else{a.appendChild(mk('span','flex: 0 0 84px; width: 84px; height: 84px; background: #EEF3FB; display: flex; align-items: center; justify-content: center; font-family: Cinzel, serif; font-weight: 600; font-size: 28px; color: '+blue,String(p.author.no)));}
-var b=mk('span','display: flex; flex-direction: column; gap: 6px; min-width: 0');var m=mk('span','display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: #5B6478');m.appendChild(mk('span','font-family: Cinzel, serif; font-size: 12px; color: #1A2233',fd(p.date)));m.appendChild(mk('span','font-weight: 700; color: '+blue,p.author.no+' '+p.author.name));b.appendChild(m);b.appendChild(mk('span','font-size: 14px; font-weight: 700; line-height: 1.6; overflow-wrap: anywhere',p.title));a.appendChild(b);li.appendChild(a);bl.appendChild(li);});
+var ps=(d.posts||[]).slice(0,4);
+function mk(t,c,tx){var e=document.createElement(t);if(c)e.className=c;if(tx!=null)e.textContent=tx;return e;}
+function fd(iso){var x=new Date(new Date(iso).getTime()+324e5),z=function(n){return(n<10?'0':'')+n;};return x.getUTCFullYear()+'/'+z(x.getUTCMonth()+1)+'/'+z(x.getUTCDate())+' '+z(x.getUTCHours())+':'+z(x.getUTCMinutes());}
+if(!ps.length){if(bl.firstElementChild)bl.firstElementChild.textContent='まだ記事はありません。最初の1本をお楽しみに。';return;}
+var BALL='<svg viewBox="0 0 40 40" width="64" height="64" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="'+blue+'"></circle><path d="M12 8.5 Q18.5 20 12 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path><path d="M28 8.5 Q21.5 20 28 31.5" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-dasharray="2.5 2.5"></path></svg>';
+bl.textContent='';bl.removeAttribute('style');bl.className='tk-cards';
+ps.forEach(function(p){var li=mk('li'),a=mk('a','tk-card');a.href='/blog/post.html?id='+encodeURIComponent(p.id);
+var w=mk('div','tk-card-who');w.appendChild(mk('span','tk-card-av',String(p.author.no)));w.appendChild(mk('span','tk-card-name',p.author.name));a.appendChild(w);
+if(p.thumb){var im=mk('img','tk-card-img');im.src=p.thumb;im.alt='';im.loading='lazy';im.decoding='async';a.appendChild(im);}else{var ph=mk('div','tk-card-ph');ph.innerHTML=BALL;a.appendChild(ph);}
+a.appendChild(mk('div','tk-card-title',p.title));a.appendChild(mk('div','tk-card-date',fd(p.date)));li.appendChild(a);bl.appendChild(li);});
 }).catch(function(){});}
 restart();
 })();
